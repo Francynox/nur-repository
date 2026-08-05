@@ -18,11 +18,11 @@
 }:
 stdenv.mkDerivation rec {
   pname = "unbound";
-  version = "1.25.2";
+  version = "1.26.0";
 
   src = fetchurl {
     url = "https://nlnetlabs.nl/downloads/unbound/unbound-${version}.tar.gz";
-    hash = "sha256-DZInXHA9X1+Lq6PasiEX3YwptJVYilwil2jtZYFWZgA=";
+    hash = "sha256-d0WKcVbidcC3sX+ryzV8sSRF2Vz8sm+5u31ey6ReC2M=";
   };
 
   configureFlags = [
