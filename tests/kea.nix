@@ -15,6 +15,7 @@ pkgs.testers.runNixOSTest {
         virtualisation.vlans = [ 1 ];
 
         networking = {
+          useNetworkd = true;
           useDHCP = false;
           firewall.allowedUDPPorts = [ 67 ];
         };
@@ -58,6 +59,7 @@ pkgs.testers.runNixOSTest {
                   {
                     "id": 1,
                     "subnet": "10.0.0.0/29",
+                    "interface": "eth1",
                     "pools": [
                       {
                         "pool": "10.0.0.3 - 10.0.0.3"
@@ -108,6 +110,7 @@ pkgs.testers.runNixOSTest {
         virtualisation.vlans = [ 1 ];
 
         networking = {
+          useNetworkd = true;
           useDHCP = false;
           firewall.allowedUDPPorts = [ 53 ];
         };
