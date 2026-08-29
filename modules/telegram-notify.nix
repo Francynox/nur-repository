@@ -45,7 +45,13 @@ let
 
     TEXT=$(printf "🖥️ <b>${config.networking.hostName}</b>\n\n%s" "''${MESSAGE}")
 
-    if ! curl --fail-with-body -s -X POST "https://api.telegram.org/bot''${BOT_TOKEN}/sendMessage" \
+    if ! curl --fail-with-body -s \
+      --connect-timeout 10 \
+      --max-time 30 \
+      --retry 3 \
+      --retry-delay 3 \
+      --retry-connrefused \
+      -X POST "https://api.telegram.org/bot''${BOT_TOKEN}/sendMessage" \
       -d chat_id="''${CHAT_ID}" \
       --data-urlencode "text=''${TEXT}" \
       -d parse_mode="HTML"; then

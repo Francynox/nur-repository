@@ -11,6 +11,10 @@ fi
 
 echo "Triggering remote configuration deployment on builder via webhook..."
 RESPONSE=$(curl $INSECURE_FLAG -s -w "\n%{http_code}" -X POST \
+  --connect-timeout 10 \
+  --retry 3 \
+  --retry-delay 5 \
+  --retry-connrefused \
   -H "Content-Type: application/json" \
   -H "X-Deploy-Token: $TOKEN" \
   -d "{\"host\": \"@hostName@\"}" \

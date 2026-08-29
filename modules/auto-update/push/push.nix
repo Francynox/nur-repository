@@ -75,7 +75,7 @@ in
     assertions = [
       {
         assertion = !config.services.francynox.auto-update.pull.enable;
-        message = "services.francynox.auto-update.pull.enable and services.francynox.auto-update.push.enable cannot be enable at the same time.";
+        message = "services.francynox.auto-update.pull.enable and services.francynox.auto-update.push.enable cannot be enabled at the same time.";
       }
       {
         assertion = cfg.webhook.url != "" && cfg.webhook.tokenFile != null;

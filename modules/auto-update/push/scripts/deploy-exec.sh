@@ -24,23 +24,40 @@ notify() {
   fi
 }
 
+START_TIME=$(date +%s)
+
 handle_exit() {
   exit_code=$?
+  DURATION=$(( $(date +%s) - START_TIME ))
+  DURATION_STR="${DURATION}s"
+  if [ "$DURATION" -ge 60 ]; then
+    DURATION_STR="$(( DURATION / 60 ))m $(( DURATION % 60 ))s"
+  fi
+
   if [ $exit_code -eq 0 ]; then
-    notify "✅ <b>Deploy successful</b>: $HOST"
+    notify "✅ <b>Deploy successful</b>: $HOST (took $DURATION_STR)"
   else
-    notify "❌ <b>Deploy failed</b>: $HOST"
+    notify "❌ <b>Deploy failed</b>: $HOST (after $DURATION_STR)"
   fi
 }
 trap handle_exit EXIT
 
-export NIX_SSHOPTS="-i @sshKeyFile@ -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/run/deploy-webhook/known_hosts"
+export NIX_SSHOPTS="-i @sshKeyFile@ -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/run/deploy-webhook/known_hosts"
+
+SUDO_FLAG=""
+if [ "$TARGET_USER" != "root" ]; then
+  SUDO_FLAG="--sudo"
+fi
 
 echo "Building and deploying configuration to attribute #$HOST at IP $IP as user $TARGET_USER..."
 nixos-rebuild switch \
   --target-host "$TARGET_USER@$IP" \
-  --use-remote-sudo \
+  $SUDO_FLAG \
   --flake "@flakePath@#$HOST"
 
 echo "Triggering reboot check on target host $HOST at IP $IP..."
-ssh $NIX_SSHOPTS "$TARGET_USER@$IP" "sudo systemctl start --no-block push-reboot-detector"
+if [ "$TARGET_USER" = "root" ]; then
+  ssh $NIX_SSHOPTS "$TARGET_USER@$IP" "systemctl start --no-block push-reboot-detector"
+else
+  ssh $NIX_SSHOPTS "$TARGET_USER@$IP" "sudo systemctl start --no-block push-reboot-detector"
+fi

@@ -5,7 +5,6 @@ export PATH=@path@
 SOPS_KEY_FILE="@sopsKeyPath@"
 SECRETS_URL="@remoteSecretsUrl@"
 OUTPUT_FILE="/run/nix-private-access.conf"
-TEMP_FILE="/tmp/secrets.yaml"
 
 echo "[fetch-pat] Fetching encrypted secrets from public repo..."
 

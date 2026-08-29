@@ -53,10 +53,6 @@ testPkgs.testers.runNixOSTest {
           tokenFile = "/etc/deploy-token";
           sshKeyFile = "/etc/ssh-key";
           telegramNotify = true;
-          caddy = {
-            enable = true;
-            domain = "builder";
-          };
         };
       };
 
@@ -72,9 +68,8 @@ testPkgs.testers.runNixOSTest {
         services.francynox.auto-update.push = {
           enable = true;
           webhook = {
-            url = "https://builder/hooks/deploy";
+            url = "http://builder:9000/hooks/deploy";
             tokenFile = "/etc/deploy-token";
-            insecure = true;
           };
           autoReboot = true;
         };
@@ -82,10 +77,9 @@ testPkgs.testers.runNixOSTest {
   };
 
   testScript = ''
-    # Wait for the webhook server and Caddy on builder to be ready
+    # Wait for the webhook server on builder to be ready
     builder.wait_for_unit("webhook.service")
-    builder.wait_for_unit("caddy.service")
-    builder.wait_for_open_port(443)
+    builder.wait_for_open_port(9000)
 
     # Wait for the client node to boot
     client.wait_for_unit("multi-user.target")

@@ -58,7 +58,7 @@ in
     assertions = [
       {
         assertion = !config.services.francynox.auto-update.push.enable;
-        message = "services.francynox.auto-update.push.enable and services.francynox.auto-update.pull.enable cannot be enable at the same time.";
+        message = "services.francynox.auto-update.push.enable and services.francynox.auto-update.pull.enable cannot be enabled at the same time.";
       }
     ];
 

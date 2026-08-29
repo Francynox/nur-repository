@@ -79,44 +79,16 @@ in
       description = "Send Telegram notifications on deploy success/failure.";
     };
 
-    caddy = {
-      enable = lib.mkOption {
-        type = lib.types.bool;
-        default = false;
-        description = "Enable Caddy reverse proxy for the webhook.";
-      };
-
-      domain = lib.mkOption {
-        type = lib.types.nullOr lib.types.str;
-        default = null;
-        description = "Domain name for the Caddy virtual host.";
-      };
+    port = lib.mkOption {
+      type = lib.types.port;
+      default = 9000;
+      description = "Port for the webhook listener.";
     };
   };
 
   config = lib.mkIf cfg.enable {
-    assertions = [
-      {
-        assertion = cfg.caddy.enable -> cfg.caddy.domain != null;
-        message = "services.francynox.auto-update.push-server: caddy.domain must be set if caddy.enable is true.";
-      }
-    ];
-
-    services.caddy = lib.mkIf cfg.caddy.enable {
-      enable = true;
-      virtualHosts."${cfg.caddy.domain}" = {
-        extraConfig = ''
-          reverse_proxy 127.0.0.1:9000 {
-            header_up X-Real-IP {client_ip}
-          }
-          tls internal
-        '';
-      };
-    };
-
-    networking.firewall.allowedTCPPorts = lib.optionals cfg.caddy.enable [
-      80
-      443
+    networking.firewall.allowedTCPPorts = [
+      cfg.port
     ];
 
     systemd.services."deploy-host@" = {
@@ -151,6 +123,7 @@ in
         );
 
         ExecStart = "${deployScript} %i";
+        TimeoutStartSec = "30m";
       };
     };
 
@@ -168,6 +141,7 @@ in
 
     services.webhook = {
       enable = true;
+      inherit (cfg) port;
       hooks = {
         deploy = {
           execute-command = "${deployWebhookScript}";
@@ -178,14 +152,15 @@ in
               name = "host";
             }
             {
-              source = "header";
-              name = "X-Real-IP";
+              source = "request";
+              name = "remote-addr";
             }
             {
               source = "header";
               name = "X-Deploy-Token";
             }
           ];
+          trigger-rule-mismatch-http-response-code = 400;
           trigger-rule = {
             and = [
               {
@@ -201,10 +176,10 @@ in
               {
                 match = {
                   type = "regex";
-                  regex = "^[a-zA-Z0-9.:]+$";
+                  regex = "^.+$";
                   parameter = {
                     source = "header";
-                    name = "X-Real-IP";
+                    name = "X-Deploy-Token";
                   };
                 };
               }
