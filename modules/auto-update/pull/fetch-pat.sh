@@ -17,7 +17,7 @@ fi
 TEMP_FILE=$(mktemp /tmp/secrets.XXXXXX.yaml)
 trap 'rm -f "$TEMP_FILE"' EXIT
 
-if ! curl --retry 5 --retry-delay 10 --retry-all-errors -sS -f -o "$TEMP_FILE" "$SECRETS_URL"; then
+if ! curl --connect-timeout 10 --max-time 60 --retry 5 --retry-delay 10 --retry-all-errors -sS -f -o "$TEMP_FILE" "$SECRETS_URL"; then
   echo "[fetch-pat] ERROR: Failed to download secrets from $SECRETS_URL after multiple attempts"
   exit 1
 fi

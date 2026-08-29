@@ -6,6 +6,7 @@
 }:
 let
   cfg = config.services.francynox.auto-update.pull;
+  cfg-telegram = config.services.francynox.telegram-notify;
 
   fetchPatScript = pkgs.replaceVarsWith {
     src = ./fetch-pat.sh;
@@ -22,6 +23,14 @@ let
       remoteSecretsUrl = cfg.secretsUrl;
     };
   };
+
+  notifyScript = pkgs.writeShellScript "nixos-upgrade-notify" ''
+    if [ "$SERVICE_RESULT" = "success" ]; then
+      ${cfg-telegram.package}/bin/telegram-notify "✅ <b>Pull upgrade successful</b>: ${config.networking.hostName}" || true
+    else
+      ${cfg-telegram.package}/bin/telegram-notify "❌ <b>Pull upgrade failed</b>: ${config.networking.hostName}" || true
+    fi
+  '';
 in
 {
   options.services.francynox.auto-update.pull = {
@@ -31,10 +40,16 @@ in
       description = "Enable pull-based auto-update.";
     };
 
-    auto-reboot = lib.mkOption {
+    autoReboot = lib.mkOption {
       type = lib.types.bool;
       default = true;
       description = "Enable auto-reboot.";
+    };
+
+    telegramNotify = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Send Telegram notifications on pull auto-update success/failure.";
     };
 
     flakeUrl = lib.mkOption {
@@ -65,7 +80,7 @@ in
     system.autoUpgrade = {
       enable = true;
       flake = cfg.flakeUrl;
-      allowReboot = cfg.auto-reboot && !config.boot.isContainer;
+      allowReboot = cfg.autoReboot && !config.boot.isContainer;
     };
 
     # Oneshot service to fetch and decrypt the GitHub PAT on boot
@@ -83,8 +98,13 @@ in
       };
     };
 
-    # Ensure nixos-upgrade uses the PAT
-    systemd.services.nixos-upgrade.environment.NIX_USER_CONF_FILES = "/run/nix-private-access.conf";
+    # Ensure nixos-upgrade uses the PAT and optionally notifies via Telegram
+    systemd.services.nixos-upgrade = {
+      environment.NIX_USER_CONF_FILES = "/run/nix-private-access.conf";
+      serviceConfig = lib.mkIf (cfg.telegramNotify && cfg-telegram.enable) {
+        ExecStopPost = "${notifyScript}";
+      };
+    };
 
     # For standard user terminals running 'sudo nixos-rebuild switch' or 'nix'
     environment.shellAliases = {
