@@ -39,7 +39,10 @@ pkgs.testers.runNixOSTest {
           chatIdFile = "/etc/telegram-chat-id";
         };
 
-        systemd.services."telegram-notify@".path = [ mockCurl ];
+        systemd.services."telegram-notify@" = {
+          path = [ mockCurl ];
+          serviceConfig.ReadWritePaths = [ "/var/log" ];
+        };
       };
   };
 
@@ -56,11 +59,18 @@ pkgs.testers.runNixOSTest {
     # Wait for systemd services to finish processing
     machine.wait_until_succeeds("grep -q 'hello from testuser' /var/log/telegram-mock.log")
 
+    # Send message via stdin pipe as non-root user
+    machine.succeed("su - testuser -c 'echo \"hello via pipe\" | telegram-notify'")
+
+    # Wait for systemd services to finish processing
+    machine.wait_until_succeeds("grep -q 'hello via pipe' /var/log/telegram-mock.log")
+
     # Assert curl request payload containing token and chat id
     curl_log = machine.succeed("cat /var/log/telegram-mock.log")
     machine.log(f"Curl invocation: {curl_log}")
     assert "mock-bot-token" in curl_log
     assert "mock-chat-id" in curl_log
     assert "hello from testuser" in curl_log
+    assert "hello via pipe" in curl_log
   '';
 }
