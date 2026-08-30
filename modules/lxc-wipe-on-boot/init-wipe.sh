@@ -2,7 +2,7 @@
 set -e -o pipefail
 export PATH=@path@
 
-# Enable logging to /nix/persist/init-wipe.log (ephemeral, lost on reboot)
+# Enable logging to /nix/persist/init-wipe.log (overwritten on each boot)
 mkdir -p /nix/persist
 echo > /nix/persist/init-wipe.log
 exec > >(tee -a /nix/persist/init-wipe.log > /dev/console) 2>&1
@@ -24,7 +24,7 @@ find / -xdev -mindepth 1 -maxdepth 1 \
   ! -name 'sbin' \
   ! -name 'boot' \
   ! -name 'nix-path-registration' \
-  -exec rm -rf {} + || true
+  -exec rm -rf --one-file-system {} + || true
 
 # Recreate necessary directories
 mkdir -p /etc/systemd/network
@@ -36,3 +36,4 @@ echo "System wiped. Returning to wrapper..."
 
 # Ensure all writes are flushed before handover
 sync
+

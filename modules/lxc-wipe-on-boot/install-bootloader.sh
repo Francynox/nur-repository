@@ -16,6 +16,7 @@ EOF
 }
 
 # Update the main init wrapper
+mkdir -p /sbin
 generate_wrapper "$defaultConfig" > /sbin/init.new
 chmod +x /sbin/init.new
 mv /sbin/init.new /sbin/init
