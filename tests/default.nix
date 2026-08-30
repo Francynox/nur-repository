@@ -14,4 +14,5 @@
   mutable-configs = import ./mutable-configs.nix { inherit pkgs modules; };
   telegram-notify = import ./telegram-notify.nix { inherit pkgs modules; };
   lxc-wipe-on-boot = import ./lxc-wipe-on-boot.nix { inherit pkgs modules; };
+  deploy-user = import ./deploy-user.nix { inherit pkgs modules; };
 }

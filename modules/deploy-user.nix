@@ -20,6 +20,12 @@ in
       description = "The deploy username";
     };
 
+    extraGroups = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Additional groups for the deploy user.";
+    };
+
     sshAuthorizedKeys = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
@@ -32,6 +38,12 @@ in
       description = "Allow the deploy user to run sudo without a password.";
     };
 
+    trustedUser = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Add the deploy user to nix.settings.trusted-users.";
+    };
+
     autologin = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -41,13 +53,16 @@ in
 
   config = lib.mkIf cfg.enable {
     users.groups.${cfg.name} = { };
+
     users.users.${cfg.name} = {
       isNormalUser = true;
       description = "Deployment User";
       group = lib.mkForce cfg.name;
-      extraGroups = [ "wheel" ];
+      inherit (cfg) extraGroups;
       openssh.authorizedKeys.keys = cfg.sshAuthorizedKeys;
     };
+
+    nix.settings.trusted-users = lib.mkIf cfg.trustedUser [ cfg.name ];
 
     security.sudo.extraRules = lib.mkIf cfg.passwordlessSudo [
       {
