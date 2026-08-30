@@ -37,9 +37,23 @@ pkgs.testers.runNixOSTest {
           "telegram-chat-id".text = "mock-telegram-chat-id";
         };
 
-        # Enable mutable configs
+        # Enable mutable configs (text and yaml)
         services.francynox.mutable-configs."test.conf" = {
           source = pkgs.writeText "test-source" "original-content\n";
+          notifyOnUpgrade = true;
+          stopAutoUpgrade = true;
+        };
+
+        services.francynox.mutable-configs."test.yaml" = {
+          source = pkgs.writeText "test-yaml-source" ''
+            server:
+              port: 8080
+              host: "0.0.0.0"
+            rules:
+              - id: 1
+                enabled: true
+          '';
+          format = "yaml";
           notifyOnUpgrade = true;
           stopAutoUpgrade = true;
         };
@@ -50,20 +64,52 @@ pkgs.testers.runNixOSTest {
     machine.wait_for_unit("multi-user.target")
 
     # TEST CASE 1: No configuration drift
-    # The target file /etc/test.conf matches pristine copy /etc/pristine/test.conf
-    # nixos-upgrade.service should start and finish successfully
+    # Target files match pristine copies
     machine.succeed("systemctl start nixos-upgrade.service")
 
-    # TEST CASE 2: Configuration drift detected (local modification)
-    # We modify /etc/test.conf so it differs from pristine
-    machine.succeed("echo 'local-modification' > /etc/test.conf")
+    # TEST CASE 2: YAML formatting changes (different indentation / key ordering)
+    # This simulates self-formatting daemons like AdGuard Home
+    reformatted_yaml = (
+        'server:\n'
+        '    host: "0.0.0.0"\n'
+        '    port: 8080\n'
+        'rules:\n'
+        '  - enabled: true\n'
+        '    id: 1\n'
+    )
+    machine.succeed(f"printf '%s' '{reformatted_yaml}' > /etc/test.yaml")
+    # YAML semantic comparison should recognize identical content and SUCCEED
+    machine.succeed("systemctl start nixos-upgrade.service")
 
-    # nixos-upgrade.service should now FAIL because of preStart check abort
+    # TEST CASE 3: Actual semantic change in YAML file
+    drifted_yaml = (
+        'server:\n'
+        '    host: "127.0.0.1"\n'
+        '    port: 9090\n'
+        'rules:\n'
+        '  - enabled: false\n'
+        '    id: 1\n'
+    )
+    machine.succeed(f"printf '%s' '{drifted_yaml}' > /etc/test.yaml")
+    # nixos-upgrade.service should now FAIL because port and host values changed
     machine.fail("systemctl start nixos-upgrade.service")
 
-    # Read telegram log to verify that the drift notification was sent
     telegram_log = machine.succeed("cat /tmp/telegram.log")
-    machine.log(f"Telegram log content:\\n{telegram_log}")
+    machine.log(f"Telegram log content after YAML drift:\n{telegram_log}")
+    assert "Configuration Drift Detected" in telegram_log
+    assert "test.yaml" in telegram_log
+    assert "Upgrade aborted" in telegram_log
+
+    # Reset YAML to pristine
+    machine.succeed("cp /etc/pristine/test.yaml /etc/test.yaml")
+    machine.succeed("rm -f /tmp/telegram.log")
+
+    # TEST CASE 4: Plain text configuration drift
+    machine.succeed("echo 'local-modification' > /etc/test.conf")
+    machine.fail("systemctl start nixos-upgrade.service")
+
+    telegram_log = machine.succeed("cat /tmp/telegram.log")
+    machine.log(f"Telegram log content after text drift:\n{telegram_log}")
     assert "Configuration Drift Detected" in telegram_log
     assert "test.conf" in telegram_log
     assert "Upgrade aborted" in telegram_log
