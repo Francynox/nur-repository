@@ -63,7 +63,7 @@ in
     };
 
     sopsKeyPath = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = "/etc/ssh/ssh_host_ed25519_key";
       description = "Path to SOPS key file.";
     };

@@ -31,22 +31,22 @@ in
     };
 
     dataDir = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = "/var/lib/unbound";
       description = "The working directory and data directory for Unbound.";
     };
 
     configDir = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = "/etc/unbound";
       description = "The configuration directory for Unbound.";
     };
 
     configFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
+      type = lib.types.nullOr (lib.types.either lib.types.str lib.types.path);
       default = null;
       description = "Path to the main Unbound configuration file (unbound.conf).";
-      example = lib.literalExpression "/path/to/your/unbound.conf";
+      example = "/etc/unbound/unbound.conf";
     };
 
     extraArgs = lib.mkOption {
@@ -98,7 +98,7 @@ in
         preStart = ''
           ${cfg.package}/bin/unbound-anchor
         '';
-        restartTriggers = cfg.extraRestartTriggers ++ [ cfg.configFile ];
+        restartTriggers = cfg.extraRestartTriggers;
         serviceConfig = {
           Type = "notify";
           ExecStart = "${cfg.package}/bin/unbound -d -p -c ${configFile} ${lib.escapeShellArgs cfg.extraArgs}";

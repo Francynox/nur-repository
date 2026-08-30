@@ -19,10 +19,10 @@ in
     };
 
     configFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
+      type = lib.types.nullOr (lib.types.either lib.types.str lib.types.path);
       default = null;
       description = "Path to the main AdGuard Home configuration file (AdGuardHome.yaml).";
-      example = lib.literalExpression "/path/to/your/AdGuardHome.yaml";
+      example = "/var/lib/adguardhome/AdGuardHome.yaml";
     };
 
     user = lib.mkOption {
@@ -38,7 +38,7 @@ in
     };
 
     dataDir = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = "/var/lib/adguardhome";
       description = "The working directory and data directory for AdGuard Home.";
     };
@@ -89,7 +89,7 @@ in
           cp -f "$ORIGINAL_CONFIG_FILE" "$WORKING_FILE"
           chmod 600 "$WORKING_FILE"
         '';
-        restartTriggers = cfg.extraRestartTriggers ++ [ cfg.configFile ];
+        restartTriggers = cfg.extraRestartTriggers;
         serviceConfig = {
           ExecStart = "${cfg.package}/bin/adguardhome -c ${configFile} --work-dir ${workDir} --pidfile ${pidFile} --no-check-update -s run ${lib.escapeShellArgs cfg.extraArgs}";
           WorkingDirectory = workDir;

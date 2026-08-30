@@ -19,14 +19,14 @@ in
     };
 
     configFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.path;
+      type = lib.types.nullOr (lib.types.either lib.types.str lib.types.path);
       default = null;
       description = "Path to the main BIND configuration file (named.conf).";
-      example = lib.literalExpression "/path/to/your/named.conf";
+      example = "/etc/bind/named.conf";
     };
 
     rndcKeyFile = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = cfg.configDir + "/rndc.key";
       description = "Path to the rndc.key file.";
     };
@@ -44,19 +44,19 @@ in
     };
 
     dataDir = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = "/var/lib/bind";
       description = "The working directory and data directory for BIND.";
     };
 
     configDir = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = "/etc/bind";
       description = "The configuration directory for BIND.";
     };
 
     staticZoneFiles = lib.mkOption {
-      type = lib.types.attrsOf lib.types.path;
+      type = lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
       default = { };
       description = ''
         An attribute set of static zone files to be forcefully copied into the zones directory
@@ -65,7 +65,7 @@ in
     };
 
     dynamicZoneFiles = lib.mkOption {
-      type = lib.types.attrsOf lib.types.path;
+      type = lib.types.attrsOf (lib.types.either lib.types.str lib.types.path);
       default = { };
       description = ''
         An attribute set of dynamic zone templates (e.g. for DHCP/DDNS) to be copied into the zones
@@ -125,7 +125,7 @@ in
           exit 1;
         fi
       '';
-      restartTriggers = cfg.extraRestartTriggers ++ [ cfg.configFile ];
+      restartTriggers = cfg.extraRestartTriggers;
       serviceConfig = {
         Type = "notify";
         ExecStart = "${cfg.package}/bin/named -f -c ${cfg.configFile} ${lib.escapeShellArgs cfg.extraArgs}";

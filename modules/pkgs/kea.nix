@@ -59,9 +59,9 @@ let
           enable = lib.mkEnableOption "Kea ${name}";
 
           configFile = lib.mkOption {
-            type = lib.types.nullOr lib.types.path;
+            type = lib.types.nullOr (lib.types.either lib.types.str lib.types.path);
             default = null;
-            description = "Path to the Kea ${name} configuration file.";
+            description = "Path to the Kea ''${name} configuration file.";
           };
 
           extraArgs = lib.mkOption {
@@ -108,7 +108,7 @@ let
           KEA_LOCKFILE_DIR = "/run/kea";
         };
 
-        restartTriggers = componentCfg.extraRestartTriggers ++ [ componentCfg.configFile ];
+        restartTriggers = componentCfg.extraRestartTriggers;
 
         serviceConfig = commonServiceConfig // {
           ExecStart = "${cfg.package}/bin/${binaryName} -c ${componentCfg.configFile} ${lib.escapeShellArgs componentCfg.extraArgs}";
@@ -141,13 +141,13 @@ in
     };
 
     dataDir = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = "/var/lib/kea";
       description = "The working directory and data directory for Kea.";
     };
 
     configDir = lib.mkOption {
-      type = lib.types.path;
+      type = lib.types.str;
       default = "/etc/kea";
       description = "The configuration directory for Kea.";
     };
