@@ -21,7 +21,10 @@ in
     configFile = lib.mkOption {
       type = lib.types.nullOr (lib.types.either lib.types.str lib.types.path);
       default = null;
-      description = "Path to the main AdGuard Home configuration file (AdGuardHome.yaml).";
+      description = ''
+        Path to the main AdGuard Home configuration file (AdGuardHome.yaml).
+        Note: This file is copied over to the working directory on every service start.
+      '';
       example = "/var/lib/adguardhome/AdGuardHome.yaml";
     };
 

@@ -52,7 +52,7 @@ in
     extraArgs = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
-      description = "List of additional command-line arguments to pass to the named daemon.";
+      description = "List of additional command-line arguments to pass to the unbound daemon.";
     };
 
     extraRestartTriggers = lib.mkOption {
@@ -96,7 +96,7 @@ in
         wants = [ "network-online.target" ];
         wantedBy = [ "multi-user.target" ];
         preStart = ''
-          ${cfg.package}/bin/unbound-anchor
+          ${cfg.package}/bin/unbound-anchor || true
         '';
         restartTriggers = cfg.extraRestartTriggers;
         serviceConfig = {

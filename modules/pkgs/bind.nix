@@ -109,18 +109,18 @@ in
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (destName: srcPath: ''
             mkdir -p "$(dirname "${cfg.dataDir}/${destName}")"
-            cp -f ${srcPath} "${cfg.dataDir}/${destName}"
+            cp -f ${lib.escapeShellArg (toString srcPath)} "${cfg.dataDir}/${destName}"
           '') cfg.staticZoneFiles
         )}
 
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (destName: srcPath: ''
             mkdir -p "$(dirname "${cfg.dataDir}/${destName}")"
-            cp -n ${srcPath} "${cfg.dataDir}/${destName}"
+            cp -n ${lib.escapeShellArg (toString srcPath)} "${cfg.dataDir}/${destName}"
           '') cfg.dynamicZoneFiles
         )}
 
-        if [ ! -r ${cfg.rndcKeyFile} ]; then
+        if [ ! -r ${lib.escapeShellArg cfg.rndcKeyFile} ]; then
           echo "${cfg.rndcKeyFile} file not found or not readable by user '${cfg.user}'. Cannot start bind service.";
           exit 1;
         fi
