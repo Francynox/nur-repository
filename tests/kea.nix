@@ -3,12 +3,76 @@
   modules,
   ...
 }:
+let
+  keaDhcp4Config = pkgs.writeText "kea-dhcp4-test.conf" ''
+    {
+      "Dhcp4": {
+        "interfaces-config": {
+          "dhcp-socket-type": "raw",
+          "interfaces": [ "eth1" ]
+        },
+        "lease-database": {
+          "type": "memfile",
+          "persist": true,
+          "name": "/var/lib/kea/dhcp4.leases"
+        },
+        "control-sockets": [
+          {
+            "socket-type": "unix",
+            "socket-name": "/run/kea/dhcp4.sock"
+          }
+        ],
+        "valid-lifetime": 3600,
+        "renew-timer": 900,
+        "rebind-timer": 1800,
+        "subnet4": [
+          {
+            "id": 1,
+            "subnet": "10.0.0.0/29",
+            "interface": "eth1",
+            "pools": [
+              {
+                "pool": "10.0.0.3 - 10.0.0.3"
+              }
+            ]
+          }
+        ],
+        "dhcp-ddns": {
+          "enable-updates": true
+        },
+        "ddns-send-updates": true,
+        "ddns-qualifying-suffix": "lan.nixos.test."
+      }
+    }
+  '';
+
+  keaDdnsConfig = pkgs.writeText "kea-ddns-test.conf" ''
+    {
+      "DhcpDdns": {
+        "forward-ddns": {
+          "ddns-domains": [
+            {
+              "name": "lan.nixos.test.",
+              "key-name": "",
+              "dns-servers": [
+                {
+                  "ip-address": "10.0.0.2",
+                  "port": 53
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  '';
+in
 pkgs.testers.runNixOSTest {
   name = "kea";
 
   nodes = {
     router =
-      { pkgs, ... }:
+      { ... }:
       {
         imports = modules;
 
@@ -32,73 +96,16 @@ pkgs.testers.runNixOSTest {
           };
         };
 
+        environment.etc."kea/kea-dhcp4.conf".source = keaDhcp4Config;
+
         services.francynox.kea.dhcp4 = {
           enable = true;
-          configFile = pkgs.writeText "kea-dhcp4-test.conf" ''
-            {
-              "Dhcp4": {
-                "interfaces-config": {
-                  "dhcp-socket-type": "raw",
-                  "interfaces": [ "eth1" ]
-                },
-                "lease-database": {
-                  "type": "memfile",
-                  "persist": true,
-                  "name": "/var/lib/kea/dhcp4.leases"
-                },
-                "control-sockets": [
-                  {
-                    "socket-type": "unix",
-                    "socket-name": "/run/kea/dhcp4.sock"
-                  }
-                ],
-                "valid-lifetime": 3600,
-                "renew-timer": 900,
-                "rebind-timer": 1800,
-                "subnet4": [
-                  {
-                    "id": 1,
-                    "subnet": "10.0.0.0/29",
-                    "interface": "eth1",
-                    "pools": [
-                      {
-                        "pool": "10.0.0.3 - 10.0.0.3"
-                      }
-                    ]
-                  }
-                ],
-                "dhcp-ddns": {
-                  "enable-updates": true
-                },
-                "ddns-send-updates": true,
-                "ddns-qualifying-suffix": "lan.nixos.test."
-              }
-            }
-          '';
+          configFile = "/etc/kea/kea-dhcp4.conf";
         };
 
         services.francynox.kea.dhcp-ddns = {
           enable = true;
-          configFile = pkgs.writeText "kea-ddns-test.conf" ''
-            {
-              "DhcpDdns": {
-                "forward-ddns": {
-                  "ddns-domains": [
-                    {
-                      "name": "lan.nixos.test.",
-                      "key-name": "",
-                      "dns-servers": [
-                        {
-                          "ip-address": "10.0.0.2",
-                          "port": 53
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          '';
+          configFile = keaDdnsConfig;
         };
       };
 
@@ -219,6 +226,27 @@ pkgs.testers.runNixOSTest {
     with subtest("Verify Service Reload"):
       router.succeed("systemctl reload kea-dhcp4.service")
       router.succeed("systemctl reload kea-dhcp-ddns.service")
+      run_checks()
+
+    with subtest("Verify preStart safeguard on restart with broken config"):
+      router.succeed("rm -f /etc/kea/kea-dhcp4.conf && echo '{\"Dhcp4\": { broken json' > /etc/kea/kea-dhcp4.conf")
+      router.fail("systemctl restart kea-dhcp4.service")
+      router.fail("systemctl is-active kea-dhcp4.service")
+      router.fail("pgrep -x kea-dhcp4")
+
+      router.succeed("cp -f ${keaDhcp4Config} /etc/kea/kea-dhcp4.conf")
+      router.succeed("systemctl restart kea-dhcp4.service")
+      router.succeed("systemctl is-active kea-dhcp4.service")
+      run_checks()
+
+    with subtest("Verify reload safeguard with broken config"):
+      router.succeed("rm -f /etc/kea/kea-dhcp4.conf && echo '{\"Dhcp4\": { broken json' > /etc/kea/kea-dhcp4.conf")
+      router.fail("systemctl reload kea-dhcp4.service")
+      router.succeed("systemctl is-active kea-dhcp4.service")
+      router.succeed("pgrep -x kea-dhcp4")
+
+      router.succeed("cp -f ${keaDhcp4Config} /etc/kea/kea-dhcp4.conf")
+      router.succeed("systemctl reload kea-dhcp4.service")
       run_checks()
   '';
 }

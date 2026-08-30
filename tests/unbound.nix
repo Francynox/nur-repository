@@ -3,6 +3,14 @@
   modules,
   ...
 }:
+let
+  unboundConf = pkgs.writeText "unbound.conf" ''
+    server:
+      private-domain: "example.com"
+      local-zone: "ns1.example.com" static
+      local-data: "ns1.example.com A 127.0.0.1"
+  '';
+in
 pkgs.testers.runNixOSTest {
   name = "unbound";
 
@@ -13,19 +21,12 @@ pkgs.testers.runNixOSTest {
 
       environment.systemPackages = [ pkgs.francynox.bind ];
 
-      services.francynox.unbound =
-        let
-          unboundConfFile = pkgs.writeText "unbound.conf" ''
-            server:
-              private-domain: "example.com"
-              local-zone: "ns1.example.com" static
-              local-data: "ns1.example.com A 127.0.0.1"
-          '';
-        in
-        {
-          enable = true;
-          configFile = unboundConfFile;
-        };
+      environment.etc."unbound/user-unbound.conf".source = unboundConf;
+
+      services.francynox.unbound = {
+        enable = true;
+        configFile = "/etc/unbound/user-unbound.conf";
+      };
     };
 
   testScript = ''
@@ -59,6 +60,28 @@ pkgs.testers.runNixOSTest {
 
     with subtest("Verify Service Restart"):
       unbound.succeed("systemctl restart unbound.service")
+      run_checks()
+
+    with subtest("Verify preStart safeguard on restart with broken config"):
+      unbound.succeed("rm -f /etc/unbound/user-unbound.conf && echo 'server: broken syntax: [invalid' > /etc/unbound/user-unbound.conf")
+      unbound.fail("systemctl restart unbound.service")
+      unbound.fail("systemctl is-active unbound.service")
+      unbound.fail("pgrep -x unbound")
+
+      unbound.succeed("cp -f ${unboundConf} /etc/unbound/user-unbound.conf")
+      unbound.succeed("systemctl restart unbound.service")
+      unbound.succeed("systemctl is-active unbound.service")
+      run_checks()
+
+    with subtest("Verify reload safeguard with broken config"):
+      unbound.succeed("rm -f /etc/unbound/user-unbound.conf && echo 'server: broken syntax: [invalid' > /etc/unbound/user-unbound.conf")
+      unbound.fail("systemctl reload unbound.service")
+      unbound.succeed("systemctl is-active unbound.service")
+      unbound.succeed("pgrep -x unbound")
+      unbound.succeed("dig @localhost ns1.example.com +short | grep 127.0.0.1")
+
+      unbound.succeed("cp -f ${unboundConf} /etc/unbound/user-unbound.conf")
+      unbound.succeed("systemctl reload unbound.service")
       run_checks()
   '';
 }

@@ -22,7 +22,6 @@ let
     StateDirectoryMode = "0750";
     CacheDirectory = "kea";
     Restart = "on-failure";
-    ExecReload = "${pkgs.coreutils}/bin/kill -HUP $MAINPID";
     # Security
     NoNewPrivileges = true;
     ProtectSystem = "strict";
@@ -108,10 +107,19 @@ let
           KEA_LOCKFILE_DIR = "/run/kea";
         };
 
+        preStart = ''
+          ${cfg.package}/bin/${binaryName} -t ${componentCfg.configFile}
+        '';
+
         restartTriggers = componentCfg.extraRestartTriggers;
 
         serviceConfig = commonServiceConfig // {
           ExecStart = "${cfg.package}/bin/${binaryName} -c ${componentCfg.configFile} ${lib.escapeShellArgs componentCfg.extraArgs}";
+          ExecReload = "${pkgs.writeShellScript "kea-${componentName}-reload" ''
+            set -e
+            ${cfg.package}/bin/${binaryName} -t ${componentCfg.configFile}
+            ${pkgs.coreutils}/bin/kill -HUP $MAINPID
+          ''}";
           AmbientCapabilities = capabilities;
           CapabilityBoundingSet = capabilities;
         };

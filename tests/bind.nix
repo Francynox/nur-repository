@@ -3,6 +3,33 @@
   modules,
   ...
 }:
+let
+  namedConf = pkgs.writeText "named-test.conf" ''
+    options {
+      directory "/var/cache/bind";
+      empty-zones-enable no;
+    };
+    zone "example.com" {
+      type master;
+      file "/var/lib/bind/db.example.com";
+
+      allow-update { localhost; };
+    };
+  '';
+
+  zoneFile = pkgs.writeText "db.example.com" ''
+    $TTL 1D
+    @       IN      SOA     ns1.example.com. root.example.com. (
+                            1          ; Serial
+                            1D         ; Refresh
+                            1H         ; Retry
+                            1W         ; Expire
+                            3H )       ; Negative Cache TTL
+    ;
+            IN      NS      ns1.example.com.
+    ns1     IN      A       127.0.0.1
+  '';
+in
 pkgs.testers.runNixOSTest {
   name = "bind";
 
@@ -19,41 +46,15 @@ pkgs.testers.runNixOSTest {
         group = "bind";
       };
 
-      services.francynox.bind =
-        let
-          zoneFile = pkgs.writeText "db.example.com" ''
-            $TTL 1D
-            @       IN      SOA     ns1.example.com. root.example.com. (
-                                    1          ; Serial
-                                    1D         ; Refresh
-                                    1H         ; Retry
-                                    1W         ; Expire
-                                    3H )       ; Negative Cache TTL
-            ;
-                    IN      NS      ns1.example.com.
-            ns1     IN      A       127.0.0.1
-          '';
+      environment.etc."bind/named.conf".source = namedConf;
 
-          namedConfFile = pkgs.writeText "named-test.conf" ''
-            options {
-              directory "/var/cache/bind";
-              empty-zones-enable no;
-            };
-            zone "example.com" {
-              type master;
-              file "/var/lib/bind/db.example.com";
-
-              allow-update { localhost; };
-            };
-          '';
-        in
-        {
-          enable = true;
-          configFile = namedConfFile;
-          staticZoneFiles = {
-            "db.example.com" = zoneFile;
-          };
+      services.francynox.bind = {
+        enable = true;
+        configFile = "/etc/bind/named.conf";
+        staticZoneFiles = {
+          "db.example.com" = zoneFile;
         };
+      };
     };
 
   testScript = ''
@@ -98,6 +99,28 @@ pkgs.testers.runNixOSTest {
 
     with subtest("Verify Service Restart"):
       bind.succeed("systemctl restart named.service")
+      run_checks()
+
+    with subtest("Verify preStart safeguard on restart with broken config"):
+      bind.succeed("rm -f /etc/bind/named.conf && echo 'options { broken syntax; };' > /etc/bind/named.conf")
+      bind.fail("systemctl restart named.service")
+      bind.fail("systemctl is-active named.service")
+      bind.fail("pgrep -x named")
+
+      bind.succeed("cp -f ${namedConf} /etc/bind/named.conf")
+      bind.succeed("systemctl restart named.service")
+      bind.succeed("systemctl is-active named.service")
+      run_checks()
+
+    with subtest("Verify reload safeguard with broken config"):
+      bind.succeed("rm -f /etc/bind/named.conf && echo 'options { broken syntax; };' > /etc/bind/named.conf")
+      bind.fail("systemctl reload named.service")
+      bind.succeed("systemctl is-active named.service")
+      bind.succeed("pgrep -x named")
+      bind.succeed("dig @localhost ns1.example.com +short | grep 127.0.0.1")
+
+      bind.succeed("cp -f ${namedConf} /etc/bind/named.conf")
+      bind.succeed("systemctl reload named.service")
       run_checks()
   '';
 }

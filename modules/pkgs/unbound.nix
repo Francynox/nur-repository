@@ -96,13 +96,18 @@ in
         wants = [ "network-online.target" ];
         wantedBy = [ "multi-user.target" ];
         preStart = ''
+          ${cfg.package}/bin/unbound-checkconf ${configFile}
           ${cfg.package}/bin/unbound-anchor || true
         '';
         restartTriggers = cfg.extraRestartTriggers;
         serviceConfig = {
           Type = "notify";
           ExecStart = "${cfg.package}/bin/unbound -d -p -c ${configFile} ${lib.escapeShellArgs cfg.extraArgs}";
-          ExecReload = "${cfg.package}/bin/unbound-control -c ${configFile} reload";
+          ExecReload = "${pkgs.writeShellScript "unbound-reload" ''
+            set -e
+            ${cfg.package}/bin/unbound-checkconf ${configFile}
+            ${cfg.package}/bin/unbound-control -c ${configFile} reload
+          ''}";
           ExecStop = "${cfg.package}/bin/unbound-control -c ${configFile} stop";
           AmbientCapabilities = [ "CAP_NET_BIND_SERVICE" ];
           CapabilityBoundingSet = [ "CAP_NET_BIND_SERVICE" ];

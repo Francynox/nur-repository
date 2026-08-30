@@ -46,7 +46,7 @@ stdenv.mkDerivation rec {
   postConfigure = ''
     # Mangle embedded paths to dev-only inputs.
     for file in config.report meson-info/intro*.json; do
-      sed -e "s|$NIX_STORE/[a-z0-9]\{32\}-|$NIX_STORE/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-|g" -i "$file"
+      sed -e "s|${builtins.storeDir}/[a-z0-9]\{32\}-|${builtins.storeDir}/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-|g" -i "$file"
     done
   '';
 

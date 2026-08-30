@@ -91,6 +91,8 @@ in
 
           cp -f "$ORIGINAL_CONFIG_FILE" "$WORKING_FILE"
           chmod 600 "$WORKING_FILE"
+
+          ${cfg.package}/bin/adguardhome --check-config -c "$WORKING_FILE" --work-dir "${workDir}"
         '';
         restartTriggers = cfg.extraRestartTriggers;
         serviceConfig = {

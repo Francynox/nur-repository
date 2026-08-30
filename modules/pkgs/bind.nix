@@ -124,12 +124,18 @@ in
           echo "${cfg.rndcKeyFile} file not found or not readable by user '${cfg.user}'. Cannot start bind service.";
           exit 1;
         fi
+
+        ${cfg.package}/bin/named-checkconf ${cfg.configFile}
       '';
       restartTriggers = cfg.extraRestartTriggers;
       serviceConfig = {
         Type = "notify";
         ExecStart = "${cfg.package}/bin/named -f -c ${cfg.configFile} ${lib.escapeShellArgs cfg.extraArgs}";
-        ExecReload = "${cfg.package}/bin/rndc -k ${cfg.rndcKeyFile} reload";
+        ExecReload = "${pkgs.writeShellScript "named-reload" ''
+          set -e
+          ${cfg.package}/bin/named-checkconf ${cfg.configFile}
+          ${cfg.package}/bin/rndc -k ${cfg.rndcKeyFile} reload
+        ''}";
         ExecStop = "${cfg.package}/bin/rndc -k ${cfg.rndcKeyFile} stop";
         AmbientCapabilities = [ "CAP_NET_BIND_SERVICE" ];
         CapabilityBoundingSet = [ "CAP_NET_BIND_SERVICE" ];
