@@ -19,7 +19,6 @@ pkgs.testers.runNixOSTest {
         systemd.services.prepare-disk = {
           description = "Prepare virtual disk for growpart test";
           wantedBy = [ "local-fs.target" ];
-          before = [ "growpart-vdb.service" ];
           unitConfig.DefaultDependencies = false;
           serviceConfig.Type = "oneshot";
           path = [
@@ -39,6 +38,7 @@ pkgs.testers.runNixOSTest {
         services.francynox.growpart.vdb = {
           device = "/dev/vdb";
           partition = 1;
+          after = [ "prepare-disk.service" ];
         };
       };
   };

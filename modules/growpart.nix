@@ -27,6 +27,11 @@ in
             default = [ ];
             description = "List of systemd services this should run before";
           };
+          after = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            default = [ ];
+            description = "List of systemd services this should run after";
+          };
         };
       }
     );
@@ -38,6 +43,7 @@ in
       lib.nameValuePair "growpart-${name}" {
         description = "Grow partition ${toString opts.partition} on ${opts.device}";
         wantedBy = [ "local-fs-pre.target" ];
+        inherit (opts) after;
         before = opts.before ++ [
           "local-fs-pre.target"
           "shutdown.target"
