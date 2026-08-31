@@ -10,7 +10,7 @@ if [ "@insecure@" = "true" ]; then
 fi
 
 echo "Triggering remote configuration deployment on builder via webhook..."
-RESPONSE=$(curl $INSECURE_FLAG -s -w "\n%{http_code}" -X POST \
+RESPONSE=$(curl $INSECURE_FLAG -sS -w "\n%{http_code}" -X POST \
   --connect-timeout 10 \
   --retry 3 \
   --retry-delay 5 \
@@ -18,7 +18,11 @@ RESPONSE=$(curl $INSECURE_FLAG -s -w "\n%{http_code}" -X POST \
   -H "Content-Type: application/json" \
   -H "X-Deploy-Token: $TOKEN" \
   -d "{\"host\": \"@hostName@\"}" \
-  "@url@")
+  "@url@" 2>&1) || {
+    echo "Error: Failed to connect to webhook server:"
+    echo "$RESPONSE"
+    exit 1
+}
 
 HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
 BODY=$(echo "$RESPONSE" | sed '$d')
@@ -30,3 +34,4 @@ if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
 fi
 
 echo "Webhook trigger successful. Status: $HTTP_STATUS"
+

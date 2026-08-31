@@ -6,6 +6,7 @@
 }:
 let
   cfg = config.services.francynox.auto-update.push;
+  cfg-telegram = config.services.francynox.telegram-notify;
 
   triggerWebhook = pkgs.replaceVarsWith {
     src = ./scripts/trigger-webhook.sh;
@@ -22,6 +23,12 @@ let
       inherit (config.networking) hostName;
     };
   };
+
+  notifyFailureScript = pkgs.writeShellScript "nixos-upgrade-push-failure-notify" ''
+    if [ "$SERVICE_RESULT" != "success" ]; then
+      ${cfg-telegram.package}/bin/telegram-notify "❌ <b>Trigger upgrade failed</b>: ${config.networking.hostName}" || true
+    fi
+  '';
 
   pushRebootDetector = pkgs.replaceVarsWith {
     src = ./scripts/push-reboot-detector.sh;
@@ -64,6 +71,12 @@ in
       };
     };
 
+    telegramNotify = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Send Telegram notifications if triggering push auto-update fails.";
+    };
+
     autoReboot = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -93,7 +106,12 @@ in
         pkgs.coreutils
       ];
 
-      serviceConfig.ExecStart = lib.mkForce triggerWebhook;
+      serviceConfig = {
+        ExecStart = lib.mkForce triggerWebhook;
+      }
+      // lib.optionalAttrs (cfg.telegramNotify && cfg-telegram.enable) {
+        ExecStopPost = "${notifyFailureScript}";
+      };
     };
 
     systemd.services.push-reboot-detector = {
