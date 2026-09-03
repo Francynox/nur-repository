@@ -32,10 +32,7 @@ pkgs.testers.runNixOSTest {
   testScript = ''
     machine.wait_for_unit("multi-user.target")
 
-    # Verify user and group existence
-    machine.succeed("id deploy")
-
-    # Verify group memberships
+    # Verify user existence and group memberships
     groups = machine.succeed("id -Gn deploy").strip().split()
     assert set(groups) == {"deploy", "customgroup"}, f"Expected groups to be {{'deploy', 'customgroup'}}, got: {groups}"
 

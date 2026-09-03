@@ -72,7 +72,6 @@ pkgs.testers.runNixOSTest {
 
       adguardhome.succeed("cp -f ${adguardHomeConfig} /etc/AdGuardHome.yaml")
       adguardhome.succeed("systemctl restart adguardhome.service")
-      adguardhome.succeed("systemctl is-active adguardhome.service")
       run_checks()
   '';
 }

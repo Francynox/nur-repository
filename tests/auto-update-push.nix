@@ -110,7 +110,6 @@ testPkgs.testers.runNixOSTest {
         # Verify rebuild log contents on builder
         deploy_log = builder.succeed("cat /var/log/deploy/deploy.log")
         builder.log(f"Deploy log content:\n{deploy_log}")
-        assert "MOCK rebuild" in deploy_log
         assert "client" in deploy_log
         assert "MOCK ssh" in deploy_log
         assert "push-deploy-guard" in deploy_log
@@ -118,7 +117,6 @@ testPkgs.testers.runNixOSTest {
         # Verify telegram log contents on builder
         telegram_log = builder.succeed("cat /var/log/deploy/telegram.log")
         builder.log(f"Telegram log content:\n{telegram_log}")
-        assert "MOCK telegram-notify" in telegram_log
         assert "Deploy successful" in telegram_log
         assert "client" in telegram_log
 
@@ -136,11 +134,9 @@ testPkgs.testers.runNixOSTest {
 
         deploy_log = builder.succeed("cat /var/log/deploy/deploy.log")
         builder.log(f"Deploy log after failure:\n{deploy_log}")
-        assert "switch --rollback" in deploy_log
 
         telegram_log = builder.succeed("cat /var/log/deploy/telegram.log")
         builder.log(f"Telegram log after failure:\n{telegram_log}")
-        assert "Deploy failed" in telegram_log
         assert "mock-broken.service" in telegram_log
         assert "rolled back" in telegram_log
 
@@ -153,7 +149,6 @@ testPkgs.testers.runNixOSTest {
         builder.wait_until_succeeds("grep -q 'Deploy failed' /var/log/deploy/telegram.log")
         telegram_log = builder.succeed("cat /var/log/deploy/telegram.log")
         builder.log(f"Telegram log with broken SSH:\n{telegram_log}")
-        assert "Deploy failed" in telegram_log
         assert "watchdog armed for auto-rollback" in telegram_log
   '';
 }

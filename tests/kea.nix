@@ -198,8 +198,8 @@ pkgs.testers.runNixOSTest {
       client.systemctl("start systemd-networkd-wait-online.service")
       client.wait_for_unit("systemd-networkd-wait-online.service")
 
-      client.wait_until_succeeds("ping -c 5 10.0.0.1", timeout = 60)
-      router.wait_until_succeeds("ping -c 5 10.0.0.3", timeout = 60)
+      client.wait_until_succeeds("ping -c 1 10.0.0.1", timeout = 60)
+      router.wait_until_succeeds("ping -c 1 10.0.0.3", timeout = 60)
 
       nameserver.wait_until_succeeds("dig +short client.lan.nixos.test @10.0.0.2 | grep -q 10.0.0.3", timeout = 60)
 
@@ -236,7 +236,6 @@ pkgs.testers.runNixOSTest {
 
       router.succeed("cp -f ${keaDhcp4Config} /etc/kea/kea-dhcp4.conf")
       router.succeed("systemctl restart kea-dhcp4.service")
-      router.succeed("systemctl is-active kea-dhcp4.service")
       run_checks()
 
     with subtest("Verify reload safeguard with broken config"):

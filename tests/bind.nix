@@ -63,7 +63,6 @@ pkgs.testers.runNixOSTest {
       bind.wait_for_open_port(53)
 
       bind.succeed("test -f /var/lib/bind/db.example.com")
-
       bind.succeed("dig @localhost ns1.example.com +short | grep 127.0.0.1")
 
       cmd_update = """
@@ -73,9 +72,7 @@ pkgs.testers.runNixOSTest {
       send' | nsupdate
       """
       bind.succeed(cmd_update)
-
       bind.succeed("dig @localhost client.example.com +short | grep 127.0.0.2")
-
       bind.succeed("rndc sync")
       bind.wait_until_succeeds("grep -q client.example.com /var/lib/bind/db.example.com")
 
@@ -109,7 +106,6 @@ pkgs.testers.runNixOSTest {
 
       bind.succeed("cp -f ${namedConf} /etc/bind/named.conf")
       bind.succeed("systemctl restart named.service")
-      bind.succeed("systemctl is-active named.service")
       run_checks()
 
     with subtest("Verify reload safeguard with broken config"):

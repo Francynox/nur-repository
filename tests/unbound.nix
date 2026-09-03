@@ -70,7 +70,6 @@ pkgs.testers.runNixOSTest {
 
       unbound.succeed("cp -f ${unboundConf} /etc/unbound/user-unbound.conf")
       unbound.succeed("systemctl restart unbound.service")
-      unbound.succeed("systemctl is-active unbound.service")
       run_checks()
 
     with subtest("Verify reload safeguard with broken config"):

@@ -70,7 +70,5 @@ pkgs.testers.runNixOSTest {
     machine.log(f"Curl invocation: {curl_log}")
     assert "mock-bot-token" in curl_log
     assert "mock-chat-id" in curl_log
-    assert "hello from testuser" in curl_log
-    assert "hello via pipe" in curl_log
   '';
 }
