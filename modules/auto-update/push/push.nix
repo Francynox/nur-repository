@@ -30,15 +30,19 @@ let
     fi
   '';
 
-  pushRebootDetector = pkgs.replaceVarsWith {
-    src = ./scripts/push-reboot-detector.sh;
+  pushDeployGuard = pkgs.replaceVarsWith {
+    src = ./scripts/push-deploy-guard.sh;
     isExecutable = true;
     replacements = {
       inherit (pkgs) runtimeShell;
       path = lib.makeBinPath [
         pkgs.coreutils
         pkgs.systemd
+        pkgs.nixos-rebuild
+        pkgs.gawk
+        pkgs.gnused
       ];
+      autoRollback = lib.boolToString cfg.autoRollback;
       autoReboot = lib.boolToString cfg.autoReboot;
     };
   };
@@ -49,6 +53,12 @@ in
       type = lib.types.bool;
       default = false;
       description = "Enable push-based auto-update.";
+    };
+
+    autoRollback = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Automatically rollback target host to previous generation if deployment or health check fails.";
     };
 
     webhook = {
@@ -101,11 +111,6 @@ in
     };
 
     systemd.services.nixos-upgrade = {
-      path = lib.mkAfter [
-        pkgs.curl
-        pkgs.coreutils
-      ];
-
       serviceConfig = {
         ExecStart = lib.mkForce triggerWebhook;
       }
@@ -114,16 +119,10 @@ in
       };
     };
 
-    systemd.services.push-reboot-detector = {
-      description = "Check if reboot is required and reboot if needed";
-      path = [
-        pkgs.coreutils
-        pkgs.systemd
-      ];
-      serviceConfig = {
-        Type = "oneshot";
-        ExecStart = pushRebootDetector;
-      };
-    };
+    environment.systemPackages = [
+      (pkgs.writeShellScriptBin "push-deploy-guard" ''
+        exec ${pushDeployGuard} "$@"
+      '')
+    ];
   };
 }

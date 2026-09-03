@@ -7,7 +7,7 @@
 let
   cfg = config.services.francynox.auto-update.push-server;
   cfg-webhook = config.services.webhook;
-  cfg-telegram = config.services.francynox.telegram-notify.package;
+  cfg-telegram = config.services.francynox.telegram-notify;
 
   deployWebhookScript = pkgs.replaceVarsWith {
     src = ./scripts/deploy-webhook.sh;
@@ -32,9 +32,21 @@ let
         pkgs.nixos-rebuild
         pkgs.util-linux
         pkgs.openssh
+        pkgs.gawk
+        pkgs.gnused
       ];
-      inherit (cfg) targetUser flakePath sshKeyFile;
-      telegramNotifyBin = if cfg.telegramNotify then "${cfg-telegram}/bin/telegram-notify" else "";
+      inherit (cfg)
+        targetUser
+        flakePath
+        sshKeyFile
+        watchdogTimeout
+        ;
+      autoRollback = lib.boolToString cfg.autoRollback;
+      telegramNotifyBin =
+        if (cfg.telegramNotify && cfg-telegram.enable) then
+          "${cfg-telegram.package}/bin/telegram-notify"
+        else
+          "";
     };
   };
 in
@@ -44,6 +56,18 @@ in
       type = lib.types.bool;
       default = false;
       description = "Enable deploy-webhook service for push-based deployments.";
+    };
+
+    autoRollback = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Automatically rollback target host to previous generation if deployment or health check fails.";
+    };
+
+    watchdogTimeout = lib.mkOption {
+      type = lib.types.str;
+      default = "180s";
+      description = "Timeout duration for target auto-rollback watchdog (e.g. 180s, 3m).";
     };
 
     flakePath = lib.mkOption {
@@ -94,10 +118,7 @@ in
     systemd.services."deploy-host@" = {
       description = "Deploy configuration to %I";
       path = [
-        pkgs.nixos-rebuild
-        pkgs.git
-        pkgs.openssh
-        pkgs.util-linux
+        pkgs.coreutils
       ];
       serviceConfig = {
         Type = "oneshot";
@@ -117,8 +138,10 @@ in
           pkgs.writeShellScript "deploy-pre-script" ''
             set -euo pipefail
             PAT=$(cat "${cfg.githubPatFile}" | tr -d '\n\r ')
-            echo "access-tokens = github.com=$PAT" > /run/deploy-webhook/nix-access-tokens.conf
-            chmod 600 /run/deploy-webhook/nix-access-tokens.conf
+            (
+              umask 077
+              echo "access-tokens = github.com=$PAT" > /run/deploy-webhook/nix-access-tokens.conf
+            )
           ''
         );
 

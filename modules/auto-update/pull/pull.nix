@@ -9,7 +9,7 @@ let
   cfg-telegram = config.services.francynox.telegram-notify;
 
   fetchPatScript = pkgs.replaceVarsWith {
-    src = ./fetch-pat.sh;
+    src = ./scripts/fetch-pat.sh;
     isExecutable = true;
     replacements = {
       inherit (pkgs) runtimeShell;
@@ -24,13 +24,27 @@ let
     };
   };
 
-  notifyScript = pkgs.writeShellScript "nixos-upgrade-notify" ''
-    if [ "$SERVICE_RESULT" = "success" ]; then
-      ${cfg-telegram.package}/bin/telegram-notify "✅ <b>Pull upgrade successful</b>: ${config.networking.hostName}" || true
-    else
-      ${cfg-telegram.package}/bin/telegram-notify "❌ <b>Pull upgrade failed</b>: ${config.networking.hostName}" || true
-    fi
-  '';
+  postUpgradeScript = pkgs.replaceVarsWith {
+    src = ./scripts/post-upgrade.sh;
+    isExecutable = true;
+    replacements = {
+      inherit (pkgs) runtimeShell;
+      path = lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.nixos-rebuild
+        pkgs.gawk
+        pkgs.gnused
+        pkgs.systemd
+      ];
+      inherit (config.networking) hostName;
+      autoRollback = lib.boolToString cfg.autoRollback;
+      telegramNotifyBin =
+        if (cfg.telegramNotify && cfg-telegram.enable) then
+          "${cfg-telegram.package}/bin/telegram-notify"
+        else
+          "";
+    };
+  };
 in
 {
   options.services.francynox.auto-update.pull = {
@@ -38,6 +52,12 @@ in
       type = lib.types.bool;
       default = false;
       description = "Enable pull-based auto-update.";
+    };
+
+    autoRollback = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Automatically rollback to previous generation if upgrade or health check fails.";
     };
 
     autoReboot = lib.mkOption {
@@ -98,11 +118,16 @@ in
       };
     };
 
-    # Ensure nixos-upgrade uses the PAT and optionally notifies via Telegram
+    # Ensure nixos-upgrade uses the PAT, runs health check / rollback, and notifies
     systemd.services.nixos-upgrade = {
       environment.NIX_USER_CONF_FILES = "/run/nix-private-access.conf";
-      serviceConfig = lib.mkIf (cfg.telegramNotify && cfg-telegram.enable) {
-        ExecStopPost = "${notifyScript}";
+      serviceConfig = {
+        ExecStartPre = pkgs.writeShellScript "pre-upgrade-record" ''
+          mkdir -p /run/nixos-upgrade
+          readlink -f /nix/var/nix/profiles/system > /run/nixos-upgrade/pre-upgrade-system || true
+          systemctl --failed --no-legend --plain | awk '{print $1}' | sort > /run/nixos-upgrade/pre-failed-units || true
+        '';
+        ExecStopPost = "${postUpgradeScript}";
       };
     };
 
