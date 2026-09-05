@@ -38,7 +38,13 @@ let
     ProtectProc = "invisible";
     ProcSubset = "pid";
     RemoveIPC = true;
-    RestrictAddressFamilies = [ "AF_UNIX AF_INET AF_INET6 AF_NETLINK AF_PACKET" ];
+    RestrictAddressFamilies = [
+      "AF_UNIX"
+      "AF_INET"
+      "AF_INET6"
+      "AF_NETLINK"
+      "AF_PACKET"
+    ];
     LockPersonality = true;
     MemoryDenyWriteExecute = true;
     RestrictRealtime = true;
@@ -115,11 +121,10 @@ let
 
         serviceConfig = commonServiceConfig // {
           ExecStart = "${cfg.package}/bin/${binaryName} -c ${componentCfg.configFile} ${lib.escapeShellArgs componentCfg.extraArgs}";
-          ExecReload = "${pkgs.writeShellScript "kea-${componentName}-reload" ''
-            set -e
-            ${cfg.package}/bin/${binaryName} -t ${componentCfg.configFile}
-            ${pkgs.coreutils}/bin/kill -HUP $MAINPID
-          ''}";
+          ExecReload = [
+            "${cfg.package}/bin/${binaryName} -t ${componentCfg.configFile}"
+            "${pkgs.coreutils}/bin/kill -HUP $MAINPID"
+          ];
           AmbientCapabilities = capabilities;
           CapabilityBoundingSet = capabilities;
         };

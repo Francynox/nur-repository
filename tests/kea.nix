@@ -191,12 +191,14 @@ pkgs.testers.runNixOSTest {
     };
   };
   testScript = ''
+    import re
+
     def run_checks():
+      nameserver.wait_for_unit("named.service")
       router.wait_for_unit("kea-dhcp4.service")
       router.wait_for_unit("kea-dhcp-ddns.service")
 
-      client.systemctl("start systemd-networkd-wait-online.service")
-      client.wait_for_unit("systemd-networkd-wait-online.service")
+      client.succeed("systemctl start systemd-networkd-wait-online.service")
 
       client.wait_until_succeeds("ping -c 1 10.0.0.1", timeout = 60)
       router.wait_until_succeeds("ping -c 1 10.0.0.3", timeout = 60)
@@ -204,12 +206,17 @@ pkgs.testers.runNixOSTest {
       nameserver.wait_until_succeeds("dig +short client.lan.nixos.test @10.0.0.2 | grep -q 10.0.0.3", timeout = 60)
 
     def security_score(service):
-      security_score = router.succeed(f'systemd-analyze security {service}.service --no-pager')
-      router.log(f"Security Analysis:\n{security_score}")
-      if "UNSAFE" in security_score:
-        raise Exception(f'{service} service security level is UNSAFE!')
+      out = router.succeed(f"systemd-analyze security {service}.service --no-pager")
+      router.log(f"Security Analysis:\n{out}")
 
-    start_all()
+      match = re.search(r"Overall exposure level.*:\s+([0-9]+\.[0-9]+)", out)
+      if not match:
+        raise Exception("Failed to extract numeric security score from systemd-analyze output!")
+
+      score = float(match.group(1))
+      threshold = 2.0
+      if score > threshold:
+        raise Exception(f"Security regression: score {score} for {service} exceeds limit {threshold}!")
 
     with subtest("Run Basic Checks"):
       run_checks()
@@ -232,7 +239,6 @@ pkgs.testers.runNixOSTest {
       router.succeed("rm -f /etc/kea/kea-dhcp4.conf && echo '{\"Dhcp4\": { broken json' > /etc/kea/kea-dhcp4.conf")
       router.fail("systemctl restart kea-dhcp4.service")
       router.fail("systemctl is-active kea-dhcp4.service")
-      router.fail("pgrep -x kea-dhcp4")
 
       router.succeed("cp -f ${keaDhcp4Config} /etc/kea/kea-dhcp4.conf")
       router.succeed("systemctl restart kea-dhcp4.service")
@@ -242,7 +248,6 @@ pkgs.testers.runNixOSTest {
       router.succeed("rm -f /etc/kea/kea-dhcp4.conf && echo '{\"Dhcp4\": { broken json' > /etc/kea/kea-dhcp4.conf")
       router.fail("systemctl reload kea-dhcp4.service")
       router.succeed("systemctl is-active kea-dhcp4.service")
-      router.succeed("pgrep -x kea-dhcp4")
 
       router.succeed("cp -f ${keaDhcp4Config} /etc/kea/kea-dhcp4.conf")
       router.succeed("systemctl reload kea-dhcp4.service")

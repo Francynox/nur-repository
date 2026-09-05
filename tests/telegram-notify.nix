@@ -51,7 +51,7 @@ pkgs.testers.runNixOSTest {
     machine.wait_for_unit("telegram-notify.socket")
 
     # Verify socket file exists and has correct permissions (0666)
-    machine.succeed("stat -c '%a' /run/telegram-notify/notify.sock | grep -q '666'")
+    assert machine.succeed("stat -c '%a' /run/telegram-notify/notify.sock").strip() == "666"
 
     # Send message as non-root user
     machine.succeed("su - testuser -c 'telegram-notify \"hello from testuser\"'")

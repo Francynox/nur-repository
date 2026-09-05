@@ -103,11 +103,10 @@ in
         serviceConfig = {
           Type = "notify";
           ExecStart = "${cfg.package}/bin/unbound -d -p -c ${configFile} ${lib.escapeShellArgs cfg.extraArgs}";
-          ExecReload = "${pkgs.writeShellScript "unbound-reload" ''
-            set -e
-            ${cfg.package}/bin/unbound-checkconf ${configFile}
-            ${cfg.package}/bin/unbound-control -c ${configFile} reload
-          ''}";
+          ExecReload = [
+            "${cfg.package}/bin/unbound-checkconf ${configFile}"
+            "${cfg.package}/bin/unbound-control -c ${configFile} reload"
+          ];
           ExecStop = "${cfg.package}/bin/unbound-control -c ${configFile} stop";
           AmbientCapabilities = [ "CAP_NET_BIND_SERVICE" ];
           CapabilityBoundingSet = [ "CAP_NET_BIND_SERVICE" ];
@@ -140,7 +139,12 @@ in
           ProtectProc = "invisible";
           ProcSubset = "pid";
           RemoveIPC = true;
-          RestrictAddressFamilies = [ "AF_UNIX AF_INET AF_INET6 AF_NETLINK" ];
+          RestrictAddressFamilies = [
+            "AF_UNIX"
+            "AF_INET"
+            "AF_INET6"
+            "AF_NETLINK"
+          ];
           LockPersonality = true;
           MemoryDenyWriteExecute = true;
           RestrictRealtime = true;

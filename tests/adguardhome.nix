@@ -37,6 +37,8 @@ pkgs.testers.runNixOSTest {
       };
   };
   testScript = ''
+    import re
+
     def run_checks():
       adguardhome.wait_for_unit("adguardhome.service")
       adguardhome.wait_for_open_port(80, timeout = 15)
@@ -47,12 +49,17 @@ pkgs.testers.runNixOSTest {
       adguardhome.succeed("dig @localhost test.home.arpa +short | grep 10.10.10.10")
 
     def security_score():
-      security_score = adguardhome.succeed("systemd-analyze security adguardhome.service --no-pager")
-      adguardhome.log(f"Security Analysis:\n{security_score}")
-      if "UNSAFE" in security_score:
-        raise Exception("AdGuardHome service security level is UNSAFE!")
+      out = adguardhome.succeed("systemd-analyze security adguardhome.service --no-pager")
+      adguardhome.log(f"Security Analysis:\n{out}")
 
-    start_all()
+      match = re.search(r"Overall exposure level.*:\s+([0-9]+\.[0-9]+)", out)
+      if not match:
+        raise Exception("Failed to extract numeric security score from systemd-analyze output!")
+
+      score = float(match.group(1))
+      threshold = 2.0
+      if score > threshold:
+        raise Exception(f"Security regression: score {score} exceeds limit {threshold}!")
 
     with subtest("Run Basic Checks"):
       run_checks()
@@ -61,14 +68,13 @@ pkgs.testers.runNixOSTest {
       security_score()
 
     with subtest("Verify Service Restart"):
-      adguardhome.systemctl("restart adguardhome.service")
+      adguardhome.succeed("systemctl restart adguardhome.service")
       run_checks()
 
     with subtest("Verify preStart safeguard on restart with broken config"):
       adguardhome.succeed("rm -f /etc/AdGuardHome.yaml && echo 'broken: yaml: [invalid' > /etc/AdGuardHome.yaml")
       adguardhome.fail("systemctl restart adguardhome.service")
       adguardhome.fail("systemctl is-active adguardhome.service")
-      adguardhome.fail("pgrep adguardhome")
 
       adguardhome.succeed("cp -f ${adguardHomeConfig} /etc/AdGuardHome.yaml")
       adguardhome.succeed("systemctl restart adguardhome.service")

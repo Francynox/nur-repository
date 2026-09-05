@@ -77,7 +77,8 @@ testPkgs.testers.runNixOSTest {
 
   testScript = ''
     # Wait for the PAT fetching service to complete and write the configuration file
-    machine.wait_until_succeeds("grep -q 'access-tokens = github.com=my-github-pat' /run/nix-private-access.conf")
+    machine.wait_for_unit("fetch-github-pat.service")
+    machine.succeed("grep -q 'access-tokens = github.com=my-github-pat' /run/nix-private-access.conf")
 
     with subtest("Successful pull upgrade"):
         # Start the nixos-upgrade service manually to trigger pull update

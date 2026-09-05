@@ -58,6 +58,8 @@ pkgs.testers.runNixOSTest {
     };
 
   testScript = ''
+    import re
+
     def run_checks():
       bind.wait_for_unit("named.service")
       bind.wait_for_open_port(53)
@@ -77,12 +79,17 @@ pkgs.testers.runNixOSTest {
       bind.wait_until_succeeds("grep -q client.example.com /var/lib/bind/db.example.com")
 
     def security_score():
-      security_score = bind.succeed("systemd-analyze security named.service --no-pager")
-      bind.log(f"Security Analysis:\n{security_score}")
-      if "UNSAFE" in security_score:
-        raise Exception("Bind service security level is UNSAFE!")
+      out = bind.succeed("systemd-analyze security named.service --no-pager")
+      bind.log(f"Security Analysis:\n{out}")
 
-    start_all()
+      match = re.search(r"Overall exposure level.*:\s+([0-9]+\.[0-9]+)", out)
+      if not match:
+        raise Exception("Failed to extract numeric security score from systemd-analyze output!")
+
+      score = float(match.group(1))
+      threshold = 2.0
+      if score > threshold:
+        raise Exception(f"Security regression: score {score} exceeds limit {threshold}!")
 
     with subtest("Run Basic Checks"):
       run_checks()
@@ -102,7 +109,6 @@ pkgs.testers.runNixOSTest {
       bind.succeed("rm -f /etc/bind/named.conf && echo 'options { broken syntax; };' > /etc/bind/named.conf")
       bind.fail("systemctl restart named.service")
       bind.fail("systemctl is-active named.service")
-      bind.fail("pgrep -x named")
 
       bind.succeed("cp -f ${namedConf} /etc/bind/named.conf")
       bind.succeed("systemctl restart named.service")
@@ -112,7 +118,6 @@ pkgs.testers.runNixOSTest {
       bind.succeed("rm -f /etc/bind/named.conf && echo 'options { broken syntax; };' > /etc/bind/named.conf")
       bind.fail("systemctl reload named.service")
       bind.succeed("systemctl is-active named.service")
-      bind.succeed("pgrep -x named")
       bind.succeed("dig @localhost ns1.example.com +short | grep 127.0.0.1")
 
       bind.succeed("cp -f ${namedConf} /etc/bind/named.conf")

@@ -131,11 +131,10 @@ in
       serviceConfig = {
         Type = "notify";
         ExecStart = "${cfg.package}/bin/named -f -c ${cfg.configFile} ${lib.escapeShellArgs cfg.extraArgs}";
-        ExecReload = "${pkgs.writeShellScript "named-reload" ''
-          set -e
-          ${cfg.package}/bin/named-checkconf ${cfg.configFile}
-          ${cfg.package}/bin/rndc -k ${cfg.rndcKeyFile} reload
-        ''}";
+        ExecReload = [
+          "${cfg.package}/bin/named-checkconf ${cfg.configFile}"
+          "${cfg.package}/bin/rndc -k ${cfg.rndcKeyFile} reload"
+        ];
         ExecStop = "${cfg.package}/bin/rndc -k ${cfg.rndcKeyFile} stop";
         AmbientCapabilities = [ "CAP_NET_BIND_SERVICE" ];
         CapabilityBoundingSet = [ "CAP_NET_BIND_SERVICE" ];
@@ -168,7 +167,12 @@ in
         ProtectProc = "invisible";
         ProcSubset = "pid";
         RemoveIPC = true;
-        RestrictAddressFamilies = [ "AF_UNIX AF_INET AF_INET6 AF_NETLINK" ];
+        RestrictAddressFamilies = [
+          "AF_UNIX"
+          "AF_INET"
+          "AF_INET6"
+          "AF_NETLINK"
+        ];
         LockPersonality = true;
         MemoryDenyWriteExecute = true;
         RestrictRealtime = true;

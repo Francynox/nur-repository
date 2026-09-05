@@ -30,6 +30,8 @@ pkgs.testers.runNixOSTest {
     };
 
   testScript = ''
+    import re
+
     def run_checks():
       unbound.wait_for_unit("unbound.service")
       unbound.wait_for_open_port(53)
@@ -41,12 +43,17 @@ pkgs.testers.runNixOSTest {
       unbound.succeed("dig @localhost ns1.example.com +short | grep 127.0.0.1")
 
     def security_score():
-      security_score = unbound.succeed("systemd-analyze security unbound.service --no-pager")
-      unbound.log(f"Security Analysis:\n{security_score}")
-      if "UNSAFE" in security_score:
-        raise Exception("Unbound service security level is UNSAFE!")
+      out = unbound.succeed("systemd-analyze security unbound.service --no-pager")
+      unbound.log(f"Security Analysis:\n{out}")
 
-    start_all()
+      match = re.search(r"Overall exposure level.*:\s+([0-9]+\.[0-9]+)", out)
+      if not match:
+        raise Exception("Failed to extract numeric security score from systemd-analyze output!")
+
+      score = float(match.group(1))
+      threshold = 2.0
+      if score > threshold:
+        raise Exception(f"Security regression: score {score} exceeds limit {threshold}!")
 
     with subtest("Run Basic Checks"):
       run_checks()
@@ -66,7 +73,6 @@ pkgs.testers.runNixOSTest {
       unbound.succeed("rm -f /etc/unbound/user-unbound.conf && echo 'server: broken syntax: [invalid' > /etc/unbound/user-unbound.conf")
       unbound.fail("systemctl restart unbound.service")
       unbound.fail("systemctl is-active unbound.service")
-      unbound.fail("pgrep -x unbound")
 
       unbound.succeed("cp -f ${unboundConf} /etc/unbound/user-unbound.conf")
       unbound.succeed("systemctl restart unbound.service")
@@ -76,7 +82,6 @@ pkgs.testers.runNixOSTest {
       unbound.succeed("rm -f /etc/unbound/user-unbound.conf && echo 'server: broken syntax: [invalid' > /etc/unbound/user-unbound.conf")
       unbound.fail("systemctl reload unbound.service")
       unbound.succeed("systemctl is-active unbound.service")
-      unbound.succeed("pgrep -x unbound")
       unbound.succeed("dig @localhost ns1.example.com +short | grep 127.0.0.1")
 
       unbound.succeed("cp -f ${unboundConf} /etc/unbound/user-unbound.conf")

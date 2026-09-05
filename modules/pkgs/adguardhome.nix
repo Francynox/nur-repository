@@ -84,8 +84,6 @@ in
         wants = [ "network-online.target" ];
         wantedBy = [ "multi-user.target" ];
         preStart = ''
-          set -e
-
           ORIGINAL_CONFIG_FILE="${cfg.configFile}"
           WORKING_FILE="${configFile}"
 
@@ -125,7 +123,12 @@ in
           ProtectProc = "invisible";
           ProcSubset = "pid";
           RemoveIPC = true;
-          RestrictAddressFamilies = [ "AF_INET AF_INET6 AF_NETLINK AF_PACKET" ];
+          RestrictAddressFamilies = [
+            "AF_INET"
+            "AF_INET6"
+            "AF_NETLINK"
+            "AF_PACKET"
+          ];
           LockPersonality = true;
           MemoryDenyWriteExecute = true;
           RestrictRealtime = true;

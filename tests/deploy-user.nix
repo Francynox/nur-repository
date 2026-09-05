@@ -40,7 +40,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("grep -E '^trusted-users = .*\\bdeploy\\b' /etc/nix/nix.conf")
 
     # Verify authorized keys
-    auth_keys = machine.succeed("cat /etc/ssh/authorized_keys.d/deploy || cat /home/deploy/.ssh/authorized_keys")
+    auth_keys = machine.succeed("cat /etc/ssh/authorized_keys.d/deploy")
     assert "test@deploy" in auth_keys, "Expected test@deploy key in authorized keys"
 
     # Verify passwordless sudo
