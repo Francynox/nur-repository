@@ -31,7 +31,7 @@ in
 
     dates = lib.mkOption {
       type = lib.types.str;
-      default = "*-*-* 02:00:00";
+      default = "*-*-* 03:00:00";
       description = "Cron expression for when to run auto-update.";
     };
 
