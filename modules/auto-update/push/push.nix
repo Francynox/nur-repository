@@ -89,7 +89,7 @@ in
 
     autoReboot = lib.mkOption {
       type = lib.types.bool;
-      default = false;
+      default = true;
       description = "Automatically reboot target hosts after successful push deployment if reboot is needed.";
     };
   };
