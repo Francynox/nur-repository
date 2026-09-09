@@ -11,16 +11,19 @@ jobs:
       pull-requests: write
     steps:
       - name: Generate GitHub App Token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         id: generate-token
         with:
           client-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-      - uses: actions/checkout@v7
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
@@ -30,15 +33,15 @@ jobs:
         run: |
           nix flake update
 
-          if [[ -n $(git status --porcelain flake.lock) ]]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
+          if [[ -n "$(git status --porcelain flake.lock)" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No updates found."
           fi
       - name: Create Pull Request
         if: steps.update.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         id: cpr
         with:
           token: ${{ steps.generate-token.outputs.token }}
@@ -60,8 +63,10 @@ jobs:
           PR_URL: ${{ steps.cpr.outputs.pull-request-url }}
         run: |
           for i in {1..5}; do
-            gh pr merge --auto --squash "$PR_URL" && break || {
+            if gh pr merge --auto --squash "$PR_URL"; then
+              break
+            else
               echo "Attempt $i failed, retrying in 5 seconds..."
               sleep 5
-            }
+            fi
           done

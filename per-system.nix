@@ -69,6 +69,8 @@
         pre-commit = {
           check.enable = true;
           settings.hooks.treefmt.enable = true;
+          settings.hooks.zizmor.enable = true;
+          settings.hooks.actionlint.enable = true;
           settings.hooks.nix-flake-check = {
             enable = true;
             name = "nix-flake-check";
@@ -93,6 +95,8 @@
             pkgs.deadnix
             pkgs.statix
             pkgs.ruff
+            pkgs.zizmor
+            pkgs.actionlint
           ];
         };
       };
