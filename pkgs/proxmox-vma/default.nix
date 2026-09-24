@@ -52,7 +52,7 @@ minimalQemu.overrideAttrs (super: rec {
   separateDebugInfo = false;
 
   patches = [
-    "${proxmoxPatchSrc}/debian/patches/pve/0026-PVE-Backup-add-vma-backup-format-code.patch"
+    "${proxmoxPatchSrc}/debian/patches/pve/0024-PVE-Backup-add-vma-backup-format-code.patch"
   ];
 
   nativeBuildInputs = super.nativeBuildInputs ++ [
