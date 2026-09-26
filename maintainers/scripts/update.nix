@@ -25,6 +25,9 @@ pkgs.writeShellApplication {
     curl
     jq
     pup
+    findutils
+    nix
+    coreutils
   ];
 
   text = ''

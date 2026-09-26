@@ -87,8 +87,8 @@ in
           ORIGINAL_CONFIG_FILE="${cfg.configFile}"
           WORKING_FILE="${configFile}"
 
-          cp -f "$ORIGINAL_CONFIG_FILE" "$WORKING_FILE"
-          chmod 600 "$WORKING_FILE"
+          ${pkgs.coreutils}/bin/cp -f "$ORIGINAL_CONFIG_FILE" "$WORKING_FILE"
+          ${pkgs.coreutils}/bin/chmod 600 "$WORKING_FILE"
 
           ${cfg.package}/bin/adguardhome --check-config -c "$WORKING_FILE" --work-dir "${workDir}"
         '';

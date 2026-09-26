@@ -19,7 +19,7 @@ let
     if [ "$#" -eq 1 ]; then
       MESSAGE="$1"
     elif [ "$#" -eq 0 ] && [ ! -t 0 ]; then
-      MESSAGE="$(cat)"
+      MESSAGE="$(${pkgs.coreutils}/bin/cat)"
     else
       echo "Usage: telegram-notify \"<message>\" or echo \"<message>\" | telegram-notify" >&2
       exit 1

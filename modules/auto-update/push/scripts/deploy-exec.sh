@@ -20,10 +20,8 @@ if ! flock -n 200; then
 fi
 
 notify() {
-  local msg="$1"
-  if [ -n "$TELEGRAM_NOTIFY" ] && [ -x "$TELEGRAM_NOTIFY" ]; then
-    "$TELEGRAM_NOTIFY" "$msg" || true
-  fi
+  [ -n "$TELEGRAM_NOTIFY" ] && [ -x "$TELEGRAM_NOTIFY" ] || return 0
+  "$TELEGRAM_NOTIFY" "$1" || echo "Warning: failed to send Telegram notification" >&2
 }
 
 START_TIME=$(date +%s)
@@ -77,7 +75,7 @@ if ! nixos-rebuild switch \
   --flake "@flakePath@#$HOST"; then
   echo "Error: nixos-rebuild switch failed on $HOST!"
   if [ "$AUTO_ROLLBACK" = "true" ]; then
-    remote_exec push-deploy-guard rollback-if-changed || true
+    remote_exec push-deploy-guard rollback-if-changed || echo "Warning: remote rollback failed or target unreachable" >&2
   fi
   FAILURE_REASON="nixos-rebuild switch failed"
   exit 1

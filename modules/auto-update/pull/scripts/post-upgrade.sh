@@ -7,10 +7,8 @@ TELEGRAM_NOTIFY="@telegramNotifyBin@"
 AUTO_ROLLBACK="@autoRollback@"
 
 notify() {
-  local msg="$1"
-  if [ -n "$TELEGRAM_NOTIFY" ] && [ -x "$TELEGRAM_NOTIFY" ]; then
-    "$TELEGRAM_NOTIFY" "$msg" || true
-  fi
+  [ -n "$TELEGRAM_NOTIFY" ] && [ -x "$TELEGRAM_NOTIFY" ] || return 0
+  "$TELEGRAM_NOTIFY" "$1" || echo "Warning: failed to send Telegram notification" >&2
 }
 
 ROLLBACK_STATUS=""
@@ -40,7 +38,7 @@ PRE_FAILED_FILE="/run/nixos-upgrade/pre-failed-units"
 
 if [ "$SERVICE_RESULT" != "success" ]; then
   echo "nixos-upgrade failed!"
-  CURRENT_SYSTEM=$(readlink -f /nix/var/nix/profiles/system || true)
+  CURRENT_SYSTEM=$(readlink -f /nix/var/nix/profiles/system)
 
   if [ -n "$PRE_SYSTEM" ] && [ -n "$CURRENT_SYSTEM" ] && [ "$CURRENT_SYSTEM" = "$PRE_SYSTEM" ]; then
     echo "Upgrade failed before new generation was activated. Leaving system unchanged."
@@ -55,7 +53,7 @@ fi
 
 # Post-activation health check
 echo "Running post-upgrade health check..."
-POST_FAILED=$(systemctl --failed --no-legend --plain | awk '{print $1}' | sort || true)
+POST_FAILED=$(systemctl --failed --no-legend --plain | awk '{print $1}' | sort)
 
 NEW_FAILED=""
 if [ -f "$PRE_FAILED_FILE" ]; then

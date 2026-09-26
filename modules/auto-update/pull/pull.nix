@@ -135,9 +135,10 @@ in
       environment.NIX_USER_CONF_FILES = "/run/nix-private-access.conf";
       serviceConfig = {
         ExecStartPre = pkgs.writeShellScript "pre-upgrade-record" ''
-          mkdir -p /run/nixos-upgrade
-          readlink -f /nix/var/nix/profiles/system > /run/nixos-upgrade/pre-upgrade-system || true
-          systemctl --failed --no-legend --plain | awk '{print $1}' | sort > /run/nixos-upgrade/pre-failed-units || true
+          set -eu -o pipefail
+          ${pkgs.coreutils}/bin/mkdir -p /run/nixos-upgrade
+          ${pkgs.coreutils}/bin/readlink -f /nix/var/nix/profiles/system > /run/nixos-upgrade/pre-upgrade-system
+          ${pkgs.systemd}/bin/systemctl --failed --no-legend --plain | ${pkgs.gawk}/bin/awk '{print $1}' | ${pkgs.coreutils}/bin/sort > /run/nixos-upgrade/pre-failed-units
         '';
         ExecStopPost = "${postUpgradeScript}";
       };

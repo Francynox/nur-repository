@@ -9,16 +9,19 @@ AUTO_REBOOT="@autoReboot@"
 
 STATE_DIR="/run/push-deploy"
 
+cleanup_timer() {
+  systemctl stop "$@" 2>/dev/null || true
+  systemctl reset-failed "$@" 2>/dev/null || true
+}
+
 disarm() {
-  systemctl stop nixos-deploy-watchdog.timer 2>/dev/null || true
-  systemctl reset-failed nixos-deploy-watchdog.timer 2>/dev/null || true
+  cleanup_timer nixos-deploy-watchdog.timer
   rm -rf "$STATE_DIR"
   echo "Rollback watchdog disarmed."
 }
 
 rollback() {
-  systemctl stop nixos-deploy-watchdog.timer 2>/dev/null || true
-  systemctl reset-failed nixos-deploy-watchdog.timer 2>/dev/null || true
+  cleanup_timer nixos-deploy-watchdog.timer
 
   if [ "$AUTO_ROLLBACK" = "true" ]; then
     echo "Rolling back target host to previous generation..."
@@ -38,7 +41,7 @@ rollback() {
 
 rollback_if_changed() {
   local current_system
-  current_system=$(readlink -f /nix/var/nix/profiles/system || true)
+  current_system=$(readlink -f /nix/var/nix/profiles/system)
   local pre_system=""
   if [ -f "$STATE_DIR/pre-deploy-system" ]; then
     pre_system=$(cat "$STATE_DIR/pre-deploy-system")
@@ -60,11 +63,10 @@ arm() {
   fi
 
   mkdir -p "$STATE_DIR"
-  readlink -f /nix/var/nix/profiles/system > "$STATE_DIR/pre-deploy-system" || true
-  systemctl --failed --no-legend --plain | awk '{print $1}' | sort > "$STATE_DIR/pre-failed-units" || true
+  readlink -f /nix/var/nix/profiles/system > "$STATE_DIR/pre-deploy-system"
+  systemctl --failed --no-legend --plain | awk '{print $1}' | sort > "$STATE_DIR/pre-failed-units"
 
-  systemctl stop nixos-deploy-watchdog.timer 2>/dev/null || true
-  systemctl reset-failed nixos-deploy-watchdog.timer 2>/dev/null || true
+  cleanup_timer nixos-deploy-watchdog.timer
 
   systemd-run --unit=nixos-deploy-watchdog \
     --on-active="$WATCHDOG_TIMEOUT" \
@@ -77,7 +79,7 @@ arm() {
 confirm() {
   echo "Running post-deploy health checks..."
   local post_failed
-  post_failed=$(systemctl --failed --no-legend --plain | awk '{print $1}' | sort || true)
+  post_failed=$(systemctl --failed --no-legend --plain | awk '{print $1}' | sort)
 
   local new_failed=""
   if [ -f "$STATE_DIR/pre-failed-units" ]; then
@@ -99,12 +101,11 @@ confirm() {
   if ! detect_reboot; then
     if [ "$AUTO_REBOOT" = "true" ]; then
       echo "Scheduling reboot in 2s..."
-      systemctl stop push-deploy-reboot.timer push-deploy-reboot.service 2>/dev/null || true
-      systemctl reset-failed push-deploy-reboot.timer push-deploy-reboot.service 2>/dev/null || true
+      cleanup_timer push-deploy-reboot.timer push-deploy-reboot.service
       systemd-run --unit=push-deploy-reboot \
         --on-active=2s \
         --description="Push deploy auto-reboot" \
-        systemctl reboot || true
+        systemctl reboot
     else
       echo "Auto-reboot is disabled; not scheduling reboot."
     fi
@@ -115,12 +116,12 @@ detect_reboot() {
   local booted_kernel current_kernel booted_initrd current_initrd booted_systemd current_systemd
   local reboot_needed=false
 
-  booted_kernel=$(readlink -f /run/booted-system/kernel || true)
-  current_kernel=$(readlink -f /run/current-system/kernel || true)
-  booted_initrd=$(readlink -f /run/booted-system/initrd || true)
-  current_initrd=$(readlink -f /run/current-system/initrd || true)
-  booted_systemd=$(readlink -f /run/booted-system/systemd || true)
-  current_systemd=$(readlink -f /run/current-system/systemd || true)
+  booted_kernel=$(readlink -f /run/booted-system/kernel)
+  current_kernel=$(readlink -f /run/current-system/kernel)
+  booted_initrd=$(readlink -f /run/booted-system/initrd)
+  current_initrd=$(readlink -f /run/current-system/initrd)
+  booted_systemd=$(readlink -f /run/booted-system/systemd)
+  current_systemd=$(readlink -f /run/current-system/systemd)
 
   if [ "$booted_kernel" != "$current_kernel" ]; then
     echo "STATUS: Kernel changed (booted: $booted_kernel, current: $current_kernel)."

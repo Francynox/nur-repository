@@ -108,15 +108,15 @@ in
       preStart = ''
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (destName: srcPath: ''
-            mkdir -p "$(dirname "${cfg.dataDir}/${destName}")"
-            cp -f ${lib.escapeShellArg (toString srcPath)} "${cfg.dataDir}/${destName}"
+            ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "${cfg.dataDir}/${destName}")"
+            ${pkgs.coreutils}/bin/cp -f ${lib.escapeShellArg (toString srcPath)} "${cfg.dataDir}/${destName}"
           '') cfg.staticZoneFiles
         )}
 
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (destName: srcPath: ''
-            mkdir -p "$(dirname "${cfg.dataDir}/${destName}")"
-            cp -n ${lib.escapeShellArg (toString srcPath)} "${cfg.dataDir}/${destName}"
+            ${pkgs.coreutils}/bin/mkdir -p "$(${pkgs.coreutils}/bin/dirname "${cfg.dataDir}/${destName}")"
+            ${pkgs.coreutils}/bin/cp -n ${lib.escapeShellArg (toString srcPath)} "${cfg.dataDir}/${destName}"
           '') cfg.dynamicZoneFiles
         )}
 

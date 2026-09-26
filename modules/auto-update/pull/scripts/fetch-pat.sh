@@ -27,7 +27,7 @@ PAT=$(SOPS_AGE_KEY="$AGE_KEY" sops -d --extract '["github-pat"]' "$TEMP_FILE")
 (
   umask 027
   echo "access-tokens = github.com=$PAT" > "$OUTPUT_FILE"
-  chgrp "$ACCESS_GROUP" "$OUTPUT_FILE" 2>/dev/null || true
+  chgrp "$ACCESS_GROUP" "$OUTPUT_FILE"
   chmod 0640 "$OUTPUT_FILE"
 )
 
