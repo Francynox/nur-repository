@@ -48,6 +48,9 @@ testPkgs.testers.runNixOSTest {
           '';
         };
 
+        users.users.alice.isNormalUser = true;
+        users.users.bob.isNormalUser = true;
+
         services.francynox.auto-update = {
           enable = true;
           mode = "pull";
@@ -56,6 +59,7 @@ testPkgs.testers.runNixOSTest {
             secretsUrl = "file:///etc/mock-secrets.yaml";
             sopsKeyPath = "/etc/ssh/ssh_host_ed25519_key";
             telegramNotify = true;
+            trustedUsers = [ "alice" ];
           };
         };
 
@@ -79,6 +83,9 @@ testPkgs.testers.runNixOSTest {
     # Wait for the PAT fetching service to complete and write the configuration file
     machine.wait_for_unit("fetch-github-pat.service")
     machine.succeed("grep -q 'access-tokens = github.com=my-github-pat' /run/nix-private-access.conf")
+    machine.succeed("stat -c '%a %G' /run/nix-private-access.conf | grep -q '640 nix-private-access'")
+    machine.succeed("su - alice -c 'test -r /run/nix-private-access.conf'")
+    machine.fail("su - bob -c 'test -r /run/nix-private-access.conf'")
 
     with subtest("Successful pull upgrade"):
         # Start the nixos-upgrade service manually to trigger pull update

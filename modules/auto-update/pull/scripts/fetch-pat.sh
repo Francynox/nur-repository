@@ -4,6 +4,7 @@ export PATH=@path@
 
 SOPS_KEY_FILE="@sopsKeyPath@"
 SECRETS_URL="@remoteSecretsUrl@"
+ACCESS_GROUP="@group@"
 OUTPUT_FILE="/run/nix-private-access.conf"
 
 echo "[fetch-pat] Fetching encrypted secrets from public repo..."
@@ -24,8 +25,10 @@ fi
 AGE_KEY=$(ssh-to-age -private-key -i "$SOPS_KEY_FILE")
 PAT=$(SOPS_AGE_KEY="$AGE_KEY" sops -d --extract '["github-pat"]' "$TEMP_FILE")
 (
-  umask 077
+  umask 027
   echo "access-tokens = github.com=$PAT" > "$OUTPUT_FILE"
+  chgrp "$ACCESS_GROUP" "$OUTPUT_FILE" 2>/dev/null || true
+  chmod 0640 "$OUTPUT_FILE"
 )
 
 echo "[fetch-pat] PAT configured successfully."

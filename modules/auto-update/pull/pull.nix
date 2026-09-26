@@ -19,7 +19,7 @@ let
         pkgs.sops
         pkgs.ssh-to-age
       ];
-      inherit (cfg) sopsKeyPath;
+      inherit (cfg) sopsKeyPath group;
       remoteSecretsUrl = cfg.secretsUrl;
     };
   };
@@ -87,6 +87,18 @@ in
       default = "/etc/ssh/ssh_host_ed25519_key";
       description = "Path to SOPS key file.";
     };
+
+    trustedUsers = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Users granted read access to private PAT configuration file.";
+    };
+
+    group = lib.mkOption {
+      type = lib.types.str;
+      default = "nix-private-access";
+      description = "Group granted read access to private PAT configuration file.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -131,15 +143,20 @@ in
       };
     };
 
-    # For standard user terminals running 'sudo nixos-rebuild switch' or 'nix'
+    users.groups.${cfg.group} = { };
+
+    users.users = lib.genAttrs cfg.trustedUsers (_user: {
+      extraGroups = [ cfg.group ];
+    });
+
+    # For standard user terminals running 'sudo nixos-rebuild switch'
     environment.shellAliases = {
       nixos-rebuild = "sudo NIX_USER_CONF_FILES=/run/nix-private-access.conf nixos-rebuild";
-      nix = "sudo NIX_USER_CONF_FILES=/run/nix-private-access.conf nix";
     };
 
-    # For root shells (e.g., sudo -i or direct root login)
+    # Automatically export NIX_USER_CONF_FILES if readable by current user
     environment.extraInit = ''
-      if [ "$USER" = "root" ] || [ "$UID" -eq 0 ]; then
+      if [ -r /run/nix-private-access.conf ]; then
         export NIX_USER_CONF_FILES="/run/nix-private-access.conf"
       fi
     '';
