@@ -1,37 +1,38 @@
 #!@runtimeShell@
-set -e -o pipefail
+set -eu -o pipefail
 export PATH=@path@
 
-TOKEN=$(cat "@tokenFile@" | tr -d '\n\r ')
+TOKEN=$(tr -d '\n\r ' < "@tokenFile@")
 
-INSECURE_FLAG=""
+INSECURE_ARGS=()
 if [ "@insecure@" = "true" ]; then
-  INSECURE_FLAG="-k"
+  INSECURE_ARGS=("-k")
 fi
 
+BODY_FILE=$(mktemp)
+trap 'rm -f "$BODY_FILE"' EXIT
+
 echo "Triggering remote configuration deployment on builder via webhook..."
-RESPONSE=$(curl $INSECURE_FLAG -sS -w "\n%{http_code}" -X POST \
+
+HTTP_STATUS=$(printf 'header = "X-Deploy-Token: %s"\n' \
+  "$TOKEN" | curl --config - \
+  "${INSECURE_ARGS[@]}" \
+  -sS \
+  -o "$BODY_FILE" \
+  -w "%{http_code}" \
   --connect-timeout 10 \
   --retry 3 \
   --retry-delay 5 \
   --retry-connrefused \
-  -H "Content-Type: application/json" \
-  -H "X-Deploy-Token: $TOKEN" \
-  -d "{\"host\": \"@hostName@\"}" \
-  "@url@" 2>&1) || {
-    echo "Error: Failed to connect to webhook server:"
-    echo "$RESPONSE"
-    exit 1
-}
-
-HTTP_STATUS=$(echo "$RESPONSE" | tail -n1)
-BODY=$(echo "$RESPONSE" | sed '$d')
+  --json "{\"host\": \"@hostName@\"}" \
+  "@url@"
+)
 
 if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
   echo "Error: Webhook returned HTTP status $HTTP_STATUS"
-  echo "Response body: $BODY"
+  echo "Response body:"
+  cat "$BODY_FILE"
   exit 1
 fi
 
 echo "Webhook trigger successful. Status: $HTTP_STATUS"
-

@@ -6,6 +6,17 @@
 let
   mockCurl = pkgs.writeShellScriptBin "curl" ''
     echo "MOCK curl: $@" >> /var/log/telegram-mock.log
+    STDIN_DATA=$(cat)
+    echo "$STDIN_DATA" >> /var/log/telegram-mock.log
+    for ref_file in $(echo "$STDIN_DATA" | sed -n 's/.*data-urlencode.*@\([^"]*\).*/\1/p'); do
+      if [ -f "$ref_file" ]; then
+        cat "$ref_file" >> /var/log/telegram-mock.log
+      fi
+    done
+    if ! echo "$STDIN_DATA" | ${pkgs.curl}/bin/curl -s --config - --help >/dev/null; then
+      echo "MOCK curl: invalid curl config" >&2
+      exit 2
+    fi
     echo '{"ok":true}'
     exit 0
   '';
@@ -70,5 +81,12 @@ pkgs.testers.runNixOSTest {
     machine.log(f"Curl invocation: {curl_log}")
     assert "mock-bot-token" in curl_log
     assert "mock-chat-id" in curl_log
+    assert "--data-urlencode" not in machine.succeed("grep 'MOCK curl:' /var/log/telegram-mock.log")
+
+    # Verify no service failures occurred
+    journal = machine.succeed("journalctl -u 'telegram-notify@*'")
+    machine.log(f"Journal: {journal}")
+    assert "Failed to send Telegram notification" not in journal
+    assert "Failed with result 'exit-code'" not in journal
   '';
 }

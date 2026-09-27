@@ -16,6 +16,8 @@ let
   cfg = config.services.francynox.telegram-notify;
 
   telegramNotifyScript = pkgs.writeShellScriptBin "telegram-notify" ''
+    set -eu -o pipefail
+
     if [ "$#" -eq 1 ]; then
       MESSAGE="$1"
     elif [ "$#" -eq 0 ] && [ ! -t 0 ]; then
@@ -37,6 +39,8 @@ let
   '';
 
   telegramNotifyServer = pkgs.writeShellScript "telegram-notify-server" ''
+    set -eu -o pipefail
+
     MESSAGE=$(cat)
 
     if [ -z "$MESSAGE" ]; then
@@ -54,8 +58,8 @@ let
       exit 1
     fi
 
-    BOT_TOKEN=$(cat "${cfg.botTokenFile}" | tr -d '\n\r ')
-    CHAT_ID=$(cat "${cfg.chatIdFile}" | tr -d '\n\r ')
+    BOT_TOKEN=$(tr -d '\n\r ' < "${cfg.botTokenFile}")
+    CHAT_ID=$(tr -d '\n\r ' < "${cfg.chatIdFile}")
 
     TEXT=$(printf "🖥️ <b>${config.networking.hostName}</b>\n\n%s" "''${MESSAGE}")
 
@@ -65,6 +69,11 @@ let
     ⚠️ [Message truncated: exceeded 4000 characters]"
     fi
 
+    TEXT_FILE=$(mktemp)
+    RESP_FILE=$(mktemp)
+    trap 'rm -f "$TEXT_FILE" "$RESP_FILE"' EXIT
+    printf "%s" "$TEXT" > "$TEXT_FILE"
+
     send_message() {
       local parse_mode="$1"
       local extra_args=()
@@ -72,22 +81,23 @@ let
         extra_args+=(-d "parse_mode=$parse_mode")
       fi
 
-      curl --fail-with-body -sS \
+      printf 'url = "https://api.telegram.org/bot%s/sendMessage"\ndata = "chat_id=%s"\ndata-urlencode = "text@%s"\n' \
+        "$BOT_TOKEN" "$CHAT_ID" "$TEXT_FILE" | curl --config - \
+        --fail-with-body -sS \
+        -o "$RESP_FILE" \
         --connect-timeout 10 \
         --max-time 30 \
         --retry 3 \
         --retry-delay 3 \
         --retry-connrefused \
-        -X POST "https://api.telegram.org/bot''${BOT_TOKEN}/sendMessage" \
-        -d chat_id="''${CHAT_ID}" \
-        --data-urlencode "text=''${TEXT}" \
         "''${extra_args[@]}"
     }
 
     if ! send_message "HTML"; then
       echo "Warning: HTML parsing failed, retrying as plain text..." >&2
       if ! send_message ""; then
-        echo "ERROR: Failed to send Telegram notification." >&2
+        echo "ERROR: Failed to send Telegram notification:" >&2
+        cat "$RESP_FILE" >&2
         exit 1
       fi
     fi

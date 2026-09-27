@@ -18,7 +18,6 @@ let
         pkgs.coreutils
         pkgs.systemd
       ];
-      inherit (cfg) tokenFile;
     };
   };
 
@@ -126,6 +125,7 @@ in
         Group = cfg-webhook.group;
 
         RuntimeDirectory = "deploy-webhook";
+        RuntimeDirectoryMode = "0700";
 
         Environment = [
           "HOME=/run/deploy-webhook"
@@ -164,6 +164,7 @@ in
 
     services.webhook = {
       enable = true;
+      enableTemplates = true;
       inherit (cfg) port;
       hooks = {
         deploy = {
@@ -177,10 +178,6 @@ in
             {
               source = "request";
               name = "remote-addr";
-            }
-            {
-              source = "header";
-              name = "X-Deploy-Token";
             }
           ];
           trigger-rule-mismatch-http-response-code = 400;
@@ -200,6 +197,16 @@ in
                 match = {
                   type = "regex";
                   regex = "^.+$";
+                  parameter = {
+                    source = "header";
+                    name = "X-Deploy-Token";
+                  };
+                };
+              }
+              {
+                match = {
+                  type = "value";
+                  value = "{{ cat `${cfg.tokenFile}` }}";
                   parameter = {
                     source = "header";
                     name = "X-Deploy-Token";

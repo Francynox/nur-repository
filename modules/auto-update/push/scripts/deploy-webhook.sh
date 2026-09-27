@@ -4,13 +4,6 @@ export PATH=@path@
 
 HOST="$1"
 REMOTE_ADDR="$2"
-TOKEN="$3"
-
-VALID_TOKEN=$(cat "@tokenFile@" | tr -d '\n\r ')
-if [ "$TOKEN" != "$VALID_TOKEN" ]; then
-  echo "Error: Unauthorized token."
-  exit 1
-fi
 
 if [ -z "$REMOTE_ADDR" ]; then
   echo "Error: Remote client IP missing from request."
