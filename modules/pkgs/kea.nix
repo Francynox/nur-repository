@@ -165,8 +165,6 @@ in
       description = "The configuration directory for Kea.";
     };
 
-    ctrl-agent = mkKeaComponent "Control Agent" "Kea Control Agent configuration (francynox NUR version).";
-
     dhcp4 = mkKeaComponent "DHCPv4 Server" "Kea DHCPv4 Server configuration (francynox NUR version).";
 
     dhcp6 = mkKeaComponent "DHCPv6 Server" "Kea DHCPv6 Server configuration (francynox NUR version).";
@@ -177,7 +175,6 @@ in
   config =
     lib.mkIf
       (lib.any (c: c.enable) [
-        cfg.ctrl-agent
         cfg.dhcp4
         cfg.dhcp6
         cfg.dhcp-ddns
@@ -193,12 +190,6 @@ in
             };
             users.groups.${cfg.group} = { };
           }
-
-          (mkKeaService {
-            componentName = "ctrl-agent";
-            binaryName = "kea-ctrl-agent";
-            componentCfg = cfg.ctrl-agent;
-          })
 
           (mkKeaService {
             componentName = "dhcp4";
