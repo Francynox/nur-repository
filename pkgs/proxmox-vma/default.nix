@@ -39,7 +39,7 @@ let
     guestAgentSupport = false;
   };
 in
-minimalQemu.overrideAttrs (super: rec {
+minimalQemu.overrideAttrs (prevAttrs: rec {
   pname = "proxmox-vma";
   version = "11.1.1";
 
@@ -55,13 +55,13 @@ minimalQemu.overrideAttrs (super: rec {
     "${proxmoxPatchSrc}/debian/patches/pve/0024-PVE-Backup-add-vma-backup-format-code.patch"
   ];
 
-  nativeBuildInputs = super.nativeBuildInputs ++ [
+  nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [
     perl
     python3Packages.qemu-qmp
     python3Packages.setuptools
     python3Packages.wheel
   ];
-  buildInputs = super.buildInputs ++ [ libuuid ];
+  buildInputs = prevAttrs.buildInputs ++ [ libuuid ];
 
   postInstall = ''
     # Delete standard QEMU binaries to reduce closure size
