@@ -2,6 +2,10 @@
   stdenv,
   lib,
   fetchurl,
+  writeShellApplication,
+  curl,
+  pup,
+  nix-update,
   # build time
   meson,
   ninja,
@@ -78,7 +82,15 @@ stdenv.mkDerivation rec {
     lmdb
   ];
 
-  passthru.updateScript = ./update.sh;
+  passthru.updateScript = lib.getExe (writeShellApplication {
+    name = "update-bind";
+    runtimeInputs = [
+      curl
+      pup
+      nix-update
+    ];
+    text = builtins.readFile ./update.sh;
+  });
 
   meta = {
     homepage = "https://www.isc.org/bind/";

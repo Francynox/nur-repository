@@ -63,12 +63,10 @@ jobs:
       - name: Run update script for ${{ matrix.package }}
         env:
           PACKAGE: ${{ matrix.package }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          SCRIPT_PATH=$(nix-build ./maintainers/scripts/update.nix \
-            --argstr package "$PACKAGE" \
-            --no-out-link)
-
-          "$SCRIPT_PATH/bin/update-$PACKAGE"
+          nix run nixpkgs#nix-update -- --flake -u "$PACKAGE"
+          rm -f update-git-commits.txt
       - name: Create Pull Request if changes detected
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:

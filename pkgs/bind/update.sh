@@ -1,10 +1,7 @@
-#! /usr/bin/env bash
-
-set -euo pipefail
-
-PKG_NAME="bind"
-PAGE_URL="https://www.isc.org/download/#BIND"
-PUP_SELECTOR='div#BIND td.download-version[title*="testing"] .download-version-text text{}'
-
-version=$(fetch_version_html "$PAGE_URL" "$PUP_SELECTOR")
-run_nix_update "$PKG_NAME" "$version"
+version=$(curl -s --fail --connect-timeout 10 --max-time 30 https://www.isc.org/download/ | pup 'div#BIND td.download-version[title*="testing"] .download-version-text text{}' | tr -d '[:space:]')
+if [ -z "$version" ]; then
+  echo "Failed to fetch latest BIND testing version from isc.org" >&2
+  exit 1
+fi
+echo "Latest BIND testing version: $version" >&2
+exec nix-update --flake "$UPDATE_NIX_ATTR_PATH" --version "$version"

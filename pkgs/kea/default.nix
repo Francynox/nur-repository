@@ -1,6 +1,11 @@
 {
   fetchurl,
   kea,
+  lib,
+  writeShellApplication,
+  curl,
+  pup,
+  nix-update,
 }:
 (kea.override {
   withKrb5 = false;
@@ -21,6 +26,14 @@
     ];
 
     passthru = (prevAttrs.passthru or { }) // {
-      updateScript = ./update.sh;
+      updateScript = lib.getExe (writeShellApplication {
+        name = "update-kea";
+        runtimeInputs = [
+          curl
+          pup
+          nix-update
+        ];
+        text = builtins.readFile ./update.sh;
+      });
     };
   })

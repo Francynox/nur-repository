@@ -3,6 +3,9 @@
   fetchFromGitHub,
   fetchurl,
   qemu_kvm,
+  writeShellApplication,
+  git,
+  nix-update,
   # build time
   perl,
   python3Packages,
@@ -77,7 +80,14 @@ minimalQemu.overrideAttrs (prevAttrs: rec {
   '';
 
   passthru = {
-    updateScript = ./update.sh;
+    updateScript = lib.getExe (writeShellApplication {
+      name = "update-proxmox-vma";
+      runtimeInputs = [
+        git
+        nix-update
+      ];
+      text = builtins.readFile ./update.sh;
+    });
     inherit proxmoxPatchSrc;
   };
 

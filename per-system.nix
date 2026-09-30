@@ -97,6 +97,7 @@
             pkgs.ruff
             pkgs.zizmor
             pkgs.actionlint
+            pkgs.just
           ];
         };
       };

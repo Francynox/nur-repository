@@ -1,20 +1,17 @@
-#! /usr/bin/env bash
+qemu_version=$(git ls-remote --tags --refs --sort='-v:refname' https://github.com/proxmox/mirror_qemu.git 'v*.*.*' | grep -v -- '-' | head -n1 | awk -F'refs/tags/v' '{print $2}')
+if [ -z "$qemu_version" ]; then
+  echo "Failed to fetch latest QEMU version" >&2
+  exit 1
+fi
+echo "Latest QEMU version: $qemu_version" >&2
 
-set -euo pipefail
+patch_rev=$(git ls-remote https://github.com/proxmox/pve-qemu.git HEAD | cut -f1)
+if [ -z "$patch_rev" ]; then
+  echo "Failed to fetch latest pve-qemu rev" >&2
+  exit 1
+fi
+echo "Latest pve-qemu rev: $patch_rev" >&2
 
-PKG_NAME="proxmox-vma"
-
-# Update QEMU Version
-API_URL_QEMU="https://api.github.com/repos/proxmox/mirror_qemu/tags"
-JQ_FILTER_QEMU=".[0].name | ltrimstr(\"v\")"
-
-version=$(fetch_version_json "$API_URL_QEMU" "$JQ_FILTER_QEMU")
-nix-update proxmox-vma --version "$version"
-
-
-# Update Patch Source
-API_URL_VMA="https://api.github.com/repos/proxmox/pve-qemu/commits/master"
-JQ_FILTER_VMA=".sha"
-
-rev=$(fetch_version_json "$API_URL_VMA" "$JQ_FILTER_VMA")
-nix-update proxmox-vma.proxmoxPatchSrc --version "$rev"
+pkg_attr="$UPDATE_NIX_ATTR_PATH"
+nix-update --flake "$pkg_attr" --version "$qemu_version"
+nix-update --flake "$pkg_attr.proxmoxPatchSrc" --version "$patch_rev"

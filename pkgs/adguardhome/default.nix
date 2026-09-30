@@ -3,6 +3,7 @@
   lib,
   fetchurl,
   autoPatchelfHook,
+  nix-update-script,
 }:
 stdenv.mkDerivation rec {
   pname = "adguardhome";
@@ -28,7 +29,12 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  passthru.updateScript = ./update.sh;
+  passthru.updateScript = nix-update-script {
+    extraArgs = [
+      "--version=unstable"
+      "--use-github-releases"
+    ];
+  };
 
   meta = {
     homepage = "https://github.com/AdguardTeam/AdGuardHome";

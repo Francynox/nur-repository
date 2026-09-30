@@ -4,6 +4,9 @@
 result
 result-*
 
+# nix-update gitUpdater artifact
+update-git-commits.txt
+
 # Pre-commit hooks
 .pre-commit-config.yaml
 

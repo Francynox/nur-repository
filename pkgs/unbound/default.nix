@@ -3,6 +3,7 @@
   fetchurl,
   unbound,
   systemdLibs,
+  nix-update-script,
 }:
 (unbound.override {
   withSystemd = true;
@@ -25,6 +26,11 @@
       ++ [ "--with-rootkey-file=/var/lib/unbound/root.key" ];
 
     passthru = (prevAttrs.passthru or { }) // {
-      updateScript = ./update.sh;
+      updateScript = nix-update-script {
+        extraArgs = [
+          "--url=https://github.com/NLnetLabs/unbound"
+          "--version-regex=release-(.+)"
+        ];
+      };
     };
   })
