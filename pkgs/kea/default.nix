@@ -16,6 +16,10 @@
       hash = "sha256-C1nVPdieF1se2zXBAEjt7IZWl1EcpzwqQ0fQE3KnmB8=";
     };
 
+    patches = [
+      ./dont-create-system-paths.patch
+    ];
+
     passthru = (prevAttrs.passthru or { }) // {
       updateScript = ./update.sh;
     };
