@@ -20,11 +20,13 @@
         p:
         lib.isDerivation p && lib.meta.availableOn pkgs.stdenv.hostPlatform p && !(p.meta.broken or false);
 
-      isFree = p: lib.all (l: l.free or true) (lib.toList (p.meta.license or [ ]));
+      isRedistributable =
+        p:
+        lib.any (l: (l.redistributable or false) || (l.free or false)) (lib.toList (p.meta.license or [ ]));
 
       isBuildable = p: isSupported p && !(p.preferLocalBuild or false);
 
-      isCacheable = p: isBuildable p && isFree p;
+      isCacheable = p: isBuildable p && isRedistributable p;
 
       mkCi =
         condition:
@@ -39,8 +41,9 @@
     in
     {
       options.ciJobs = lib.mkOption {
-        type = lib.types.attrs;
+        type = lib.types.lazyAttrsOf lib.types.package;
         default = { };
+        description = "Derivations built and pushed to binary cache in CI.";
       };
 
       config = {
@@ -92,13 +95,9 @@
           packages = [
             config.treefmt.build.wrapper
             pkgs.nix-update
-            pkgs.deadnix
-            pkgs.statix
-            pkgs.ruff
-            pkgs.zizmor
-            pkgs.actionlint
             pkgs.just
-          ];
+          ]
+          ++ config.pre-commit.settings.enabledPackages;
         };
       };
     };
