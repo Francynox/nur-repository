@@ -19,6 +19,8 @@
   adguardhome = pkgs.callPackage ./pkgs/adguardhome { };
   unbound = pkgs.callPackage ./pkgs/unbound { };
   proxmox-vma = pkgs.callPackage ./pkgs/proxmox-vma { };
+  sparkyfitness-server = pkgs.callPackage ./pkgs/sparkyfitness/server.nix { };
+  sparkyfitness-frontend = pkgs.callPackage ./pkgs/sparkyfitness/frontend.nix { };
   # some-qt5-package = pkgs.libsForQt5.callPackage ./pkgs/some-qt5-package { };
   # ...
 }

@@ -6,6 +6,7 @@
   bind = import ./pkgs/bind.nix;
   adguardhome = import ./pkgs/adguardhome.nix;
   unbound = import ./pkgs/unbound.nix;
+  sparkyfitness = import ./pkgs/sparkyfitness.nix;
   growpart = import ./growpart.nix;
   mutable-configs = import ./mutable-configs.nix;
   telegram-notify = import ./telegram-notify.nix;
