@@ -42,59 +42,61 @@ let
     guestAgentSupport = false;
   };
 in
-minimalQemu.overrideAttrs (prevAttrs: rec {
-  pname = "proxmox-vma";
-  version = "11.1.1";
+minimalQemu.overrideAttrs (
+  finalAttrs: prevAttrs: {
+    pname = "proxmox-vma";
+    version = "11.1.1";
 
-  src = fetchurl {
-    url = "https://download.qemu.org/qemu-${version}.tar.xz";
-    hash = "sha256-B5/7/4pxEbvIkCIQfLq/O7/WFNX8nXzGdZkRlqyhJII=";
-  };
+    src = fetchurl {
+      url = "https://download.qemu.org/qemu-${finalAttrs.version}.tar.xz";
+      hash = "sha256-B5/7/4pxEbvIkCIQfLq/O7/WFNX8nXzGdZkRlqyhJII=";
+    };
 
-  outputs = [ "out" ];
-  separateDebugInfo = false;
+    outputs = [ "out" ];
+    separateDebugInfo = false;
 
-  patches = [
-    "${proxmoxPatchSrc}/debian/patches/pve/0024-PVE-Backup-add-vma-backup-format-code.patch"
-  ];
+    patches = [
+      "${proxmoxPatchSrc}/debian/patches/pve/0024-PVE-Backup-add-vma-backup-format-code.patch"
+    ];
 
-  nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [
-    perl
-    python3Packages.qemu-qmp
-    python3Packages.setuptools
-    python3Packages.wheel
-  ];
-  buildInputs = prevAttrs.buildInputs ++ [ libuuid ];
+    nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [
+      perl
+      python3Packages.qemu-qmp
+      python3Packages.setuptools
+      python3Packages.wheel
+    ];
+    buildInputs = prevAttrs.buildInputs ++ [ libuuid ];
 
-  postInstall = ''
-    # Delete standard QEMU binaries to reduce closure size
-    find $out/bin -type f -not -name 'vma' -delete
+    postInstall = ''
+      # Delete standard QEMU binaries to reduce closure size
+      find $out/bin -type f -not -name 'vma' -delete
 
-    # Cleanup artifacts
-    rm -rf $out/share $out/libexec $out/include
+      # Cleanup artifacts
+      rm -rf $out/share $out/libexec $out/include
 
-    if [ ! -e "$out/bin/vma" ]; then
-        echo "Error: vma binary was not built!"
-        exit 1
-    fi
-  '';
+      if [ ! -e "$out/bin/vma" ]; then
+          echo "Error: vma binary was not built!"
+          exit 1
+      fi
+    '';
 
-  passthru = {
-    updateScript = lib.getExe (writeShellApplication {
-      name = "update-proxmox-vma";
-      runtimeInputs = [
-        git
-        nix-update
-      ];
-      text = builtins.readFile ./update.sh;
-    });
-    inherit proxmoxPatchSrc;
-  };
+    passthru = {
+      updateScript = lib.getExe (writeShellApplication {
+        name = "update-proxmox-vma";
+        runtimeInputs = [
+          git
+          nix-update
+        ];
+        text = builtins.readFile ./update.sh;
+      });
+      inherit proxmoxPatchSrc;
+    };
 
-  meta = {
-    description = "Proxmox VMA (Virtual Machine Archive) tool patched into QEMU";
-    homepage = "https://git.proxmox.com/?p=pve-qemu.git";
-    license = lib.licenses.gpl2Plus;
-    platforms = [ "x86_64-linux" ];
-  };
-})
+    meta = {
+      description = "Proxmox VMA (Virtual Machine Archive) tool patched into QEMU";
+      homepage = "https://git.proxmox.com/?p=pve-qemu.git";
+      license = lib.licenses.gpl2Plus;
+      platforms = [ "x86_64-linux" ];
+    };
+  }
+)

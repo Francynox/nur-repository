@@ -1,36 +1,100 @@
 {
+  stdenv,
   lib,
   fetchurl,
-  unbound,
-  systemdLibs,
+  # build time
+  pkg-config,
+  flex,
+  bison,
+  makeWrapper,
+  symlinkJoin,
   nix-update-script,
+  # runtime
+  openssl,
+  expat,
+  nghttp2,
+  systemdLibs,
+  libsodium,
+  libevent,
 }:
-(unbound.override {
-  withSystemd = true;
-  systemd = systemdLibs;
-  withSlimLib = false;
-  withTFO = true;
-  withDoH = true;
-}).overrideAttrs
-  (prevAttrs: rec {
-    pname = "unbound";
-    version = "1.26.1";
+stdenv.mkDerivation (finalAttrs: {
+  pname = "unbound";
+  version = "1.26.1";
 
-    src = fetchurl {
-      url = "https://nlnetlabs.nl/downloads/unbound/unbound-${version}.tar.gz";
-      hash = "sha256-NabcDkJakoLDQm2aMEMUQBG/BTSu1Lc6tixSruCvFQM=";
-    };
+  src = fetchurl {
+    url = "https://nlnetlabs.nl/downloads/unbound/unbound-${finalAttrs.version}.tar.gz";
+    hash = "sha256-NabcDkJakoLDQm2aMEMUQBG/BTSu1Lc6tixSruCvFQM=";
+  };
 
-    configureFlags =
-      (builtins.filter (flag: !lib.hasPrefix "--with-rootkey-file=" flag) prevAttrs.configureFlags)
-      ++ [ "--with-rootkey-file=/var/lib/unbound/root.key" ];
-
-    passthru = (prevAttrs.passthru or { }) // {
-      updateScript = nix-update-script {
-        extraArgs = [
-          "--url=https://github.com/NLnetLabs/unbound"
-          "--version-regex=release-(.+)"
+  configureFlags = [
+    "--localstatedir=/var"
+    "--sysconfdir=/etc"
+    "--sbindir=\${out}/bin"
+    "--enable-pie"
+    "--enable-relro-now"
+    "--enable-systemd"
+    "--enable-dnscrypt"
+    "--enable-tfo-client"
+    "--enable-tfo-server"
+    "--with-ssl=${openssl.dev}"
+    "--with-libexpat=${expat.dev}"
+    "--with-libevent=${libevent.dev}"
+    "--with-libnghttp2=${nghttp2.dev}"
+    "--with-libsodium=${
+      symlinkJoin {
+        name = "libsodium-full";
+        paths = [
+          libsodium.dev
+          libsodium
         ];
-      };
-    };
-  })
+      }
+    }"
+    "--with-rootkey-file=/var/lib/unbound/root.key"
+  ];
+
+  nativeBuildInputs = [
+    pkg-config
+    flex
+    bison
+    makeWrapper
+  ];
+
+  buildInputs = [
+    openssl
+    expat
+    nghttp2
+    systemdLibs
+    libsodium
+    libevent
+  ];
+
+  postConfigure = ''
+    sed -E '/CONFCMDLINE/ s;${builtins.storeDir}/[a-z0-9]{32}-;${builtins.storeDir}/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-;g' -i config.h
+  '';
+
+  installFlags = [ "configfile=\${out}/etc/unbound/unbound.conf" ];
+
+  postInstall = ''
+    make unbound-event-install
+
+    wrapProgram $out/bin/unbound-control-setup \
+      --prefix PATH : ${lib.makeBinPath [ openssl ]}
+  '';
+
+  enableParallelBuilding = true;
+
+  passthru.updateScript = nix-update-script {
+    extraArgs = [
+      "--url=https://github.com/NLnetLabs/unbound"
+      "--version-regex=release-(.+)"
+    ];
+  };
+
+  meta = {
+    homepage = "https://nlnetlabs.nl/projects/unbound/about/";
+    description = "UNBOUND - validating, recursive, caching DNS resolver";
+    license = lib.licenses.bsd3;
+    platforms = [ "x86_64-linux" ];
+    mainProgram = "unbound";
+  };
+})

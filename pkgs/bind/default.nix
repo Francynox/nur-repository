@@ -26,12 +26,12 @@
   libedit,
   lmdb,
 }:
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "bind";
   version = "9.21.26";
 
   src = fetchurl {
-    url = "https://downloads.isc.org/isc/${pname}9/${version}/${pname}-${version}.tar.xz";
+    url = "https://downloads.isc.org/isc/${finalAttrs.pname}9/${finalAttrs.version}/${finalAttrs.pname}-${finalAttrs.version}.tar.xz";
     hash = "sha256-vsYi2A7qpal7POvCr7ZUXIiObl/KmPY7BP2VjSZGPXs=";
   };
 
@@ -99,4 +99,4 @@ stdenv.mkDerivation rec {
     platforms = [ "x86_64-linux" ];
     mainProgram = "named";
   };
-}
+})

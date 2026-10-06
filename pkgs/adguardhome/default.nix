@@ -5,12 +5,12 @@
   autoPatchelfHook,
   nix-update-script,
 }:
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (finalAttrs: {
   pname = "adguardhome";
   version = "1.0.0-b.1";
 
   src = fetchurl {
-    url = "https://github.com/AdguardTeam/AdGuardHome/releases/download/v${version}/AdGuardHome_linux_amd64.tar.gz";
+    url = "https://github.com/AdguardTeam/AdGuardHome/releases/download/v${finalAttrs.version}/AdGuardHome_linux_amd64.tar.gz";
     hash = "sha256-Y4DLNZsTVnu48HQaUPONcC5clMIVnF2dgUSTOYDtOdQ=";
   };
 
@@ -43,4 +43,4 @@ stdenv.mkDerivation rec {
     platforms = [ "x86_64-linux" ];
     mainProgram = "adguardhome";
   };
-}
+})
