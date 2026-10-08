@@ -16,7 +16,7 @@ let
     "@workspace/shared"
   ];
 
-  pnpmHash = "sha256-5y6jnPXPWUPXuAQBRSUdxw9vq9tSDqnEmUhGeaVuBKI=";
+  pnpmHash = "sha256-HSDZQMD2UHAClxK98Etu4x1DRKm6jMLSWb5WGoyAs+s=";
 in
 stdenv.mkDerivation (finalAttrs: {
   inherit pname;
