@@ -6,14 +6,6 @@
 let
   testPkgs = pkgs.extend (
     final: _prev: {
-      sops = final.writeShellScriptBin "sops" ''
-        echo "my-github-pat"
-        exit 0
-      '';
-      ssh-to-age = final.writeShellScriptBin "ssh-to-age" ''
-        echo "dummy-age-key"
-        exit 0
-      '';
       nixos-rebuild = final.writeShellScriptBin "nixos-rebuild" ''
         echo "MOCK rebuild: $@" >> /tmp/rebuild.log
         exit 0
@@ -30,10 +22,7 @@ testPkgs.testers.runNixOSTest {
       {
         imports = modules;
 
-        # Ensure SSH host key exists for the fetch script check
         environment.etc = {
-          "ssh/ssh_host_ed25519_key".text = "mock-private-key";
-          "mock-secrets.yaml".text = "mock-encrypted-sops-data";
           "telegram-token".text = "mock-telegram-token";
           "telegram-chat-id".text = "mock-telegram-chat-id";
         };
@@ -48,22 +37,16 @@ testPkgs.testers.runNixOSTest {
           '';
         };
 
-        users.users.alice.isNormalUser = true;
-        users.users.bob.isNormalUser = true;
-
         services.francynox.auto-update = {
           enable = true;
           mode = "pull";
           pull = {
             flakeUrl = "github:my-org/my-private-repo/main";
-            secretsUrl = "file:///etc/mock-secrets.yaml";
-            sopsKeyPath = "/etc/ssh/ssh_host_ed25519_key";
             telegramNotify = true;
-            trustedUsers = [ "alice" ];
           };
         };
 
-        # Directly mock the ExecStart command of nixos-upgrade service
+        # Mock the ExecStart command of nixos-upgrade service
         systemd.services.nixos-upgrade.serviceConfig.ExecStart = lib.mkForce (
           pkgs.writeShellScript "mock-nixos-upgrade" ''
             if [ -f /tmp/mock-upgrade-fail ]; then
@@ -72,7 +55,6 @@ testPkgs.testers.runNixOSTest {
               exit 1
             fi
             echo "MOCK nixos-rebuild: --flake github:my-org/my-private-repo/main" >> /tmp/upgrade.log
-            echo "NIX_USER_CONF_FILES: $NIX_USER_CONF_FILES" >> /tmp/upgrade.log
             exit 0
           ''
         );
@@ -80,13 +62,6 @@ testPkgs.testers.runNixOSTest {
   };
 
   testScript = ''
-    # Wait for the PAT fetching service to complete and write the configuration file
-    machine.wait_for_unit("fetch-github-pat.service")
-    machine.succeed("grep -q 'access-tokens = github.com=my-github-pat' /run/nix-private-access.conf")
-    machine.succeed("stat -c '%a %G' /run/nix-private-access.conf | grep -q '640 nix-private-access'")
-    machine.succeed("su - alice -c 'test -r /run/nix-private-access.conf'")
-    machine.fail("su - bob -c 'test -r /run/nix-private-access.conf'")
-
     with subtest("Successful pull upgrade"):
         # Start the nixos-upgrade service manually to trigger pull update
         machine.succeed("systemctl start nixos-upgrade.service")
@@ -95,11 +70,10 @@ testPkgs.testers.runNixOSTest {
         machine.wait_until_succeeds("grep -q 'MOCK nixos-rebuild' /tmp/upgrade.log")
         machine.wait_until_succeeds("grep -q 'Pull upgrade successful' /tmp/telegram.log")
 
-        # Read upgrade log to verify nixos-rebuild was called with correct environment
+        # Read upgrade log to verify nixos-rebuild was called
         upgrade_log = machine.succeed("cat /tmp/upgrade.log")
         machine.log(f"Upgrade log content:\n{upgrade_log}")
         assert "github:my-org/my-private-repo/main" in upgrade_log
-        assert "NIX_USER_CONF_FILES: /run/nix-private-access.conf" in upgrade_log
 
     with subtest("Failed upgrade execution triggers rollback"):
         machine.succeed("rm -f /tmp/upgrade.log /tmp/telegram.log /tmp/rebuild.log")

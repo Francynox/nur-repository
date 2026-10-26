@@ -8,22 +8,6 @@ let
   cfg = config.services.francynox.auto-update.pull;
   cfg-telegram = config.services.francynox.telegram-notify;
 
-  fetchPatScript = pkgs.replaceVarsWith {
-    src = ./scripts/fetch-pat.sh;
-    isExecutable = true;
-    replacements = {
-      inherit (pkgs) runtimeShell;
-      path = lib.makeBinPath [
-        pkgs.coreutils
-        pkgs.curl
-        pkgs.sops
-        pkgs.ssh-to-age
-      ];
-      inherit (cfg) sopsKeyPath group;
-      remoteSecretsUrl = cfg.secretsUrl;
-    };
-  };
-
   postUpgradeScript = pkgs.replaceVarsWith {
     src = ./scripts/post-upgrade.sh;
     isExecutable = true;
@@ -76,29 +60,6 @@ in
       type = lib.types.str;
       description = "Target flake repository URL.";
     };
-
-    secretsUrl = lib.mkOption {
-      type = lib.types.str;
-      description = "Secrets repository or URL.";
-    };
-
-    sopsKeyPath = lib.mkOption {
-      type = lib.types.str;
-      default = "/etc/ssh/ssh_host_ed25519_key";
-      description = "Path to SOPS key file.";
-    };
-
-    trustedUsers = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ ];
-      description = "Users granted read access to private PAT configuration file.";
-    };
-
-    group = lib.mkOption {
-      type = lib.types.str;
-      default = "nix-private-access";
-      description = "Group granted read access to private PAT configuration file.";
-    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -115,24 +76,7 @@ in
       allowReboot = cfg.autoReboot && !config.boot.isContainer;
     };
 
-    # Oneshot service to fetch and decrypt the GitHub PAT on boot
-    systemd.services.fetch-github-pat = {
-      description = "Fetch and decrypt GitHub PAT for private repo access";
-      wantedBy = [ "multi-user.target" ];
-      before = [ "nixos-upgrade.service" ];
-      requiredBy = [ "nixos-upgrade.service" ];
-      wants = [ "network-online.target" ];
-      after = [ "network-online.target" ];
-      serviceConfig = {
-        Type = "oneshot";
-        ExecStart = fetchPatScript;
-        RemainAfterExit = true;
-      };
-    };
-
-    # Ensure nixos-upgrade uses the PAT, runs health check / rollback, and notifies
     systemd.services.nixos-upgrade = {
-      environment.NIX_USER_CONF_FILES = "/run/nix-private-access.conf";
       serviceConfig = {
         ExecStartPre = pkgs.writeShellScript "pre-upgrade-record" ''
           set -eu -o pipefail
@@ -143,30 +87,5 @@ in
         ExecStopPost = "${postUpgradeScript}";
       };
     };
-
-    users.groups.${cfg.group} = { };
-
-    users.users = lib.genAttrs cfg.trustedUsers (_user: {
-      extraGroups = [ cfg.group ];
-    });
-
-    # For standard user terminals running 'sudo nixos-rebuild switch'
-    environment.shellAliases = {
-      nixos-rebuild = "sudo NIX_USER_CONF_FILES=/run/nix-private-access.conf nixos-rebuild";
-    };
-
-    # Automatically export NIX_USER_CONF_FILES if readable by current user
-    environment.extraInit = ''
-      if [ -r /run/nix-private-access.conf ]; then
-        export NIX_USER_CONF_FILES="/run/nix-private-access.conf"
-      fi
-    '';
-
-    # Expose the fetch script for manual use
-    environment.systemPackages = [
-      (pkgs.writeShellScriptBin "fetch-pat" ''
-        exec ${fetchPatScript}
-      '')
-    ];
   };
 }
