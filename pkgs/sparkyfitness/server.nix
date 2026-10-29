@@ -58,9 +58,9 @@ stdenv.mkDerivation (finalAttrs: {
     mkdir -p "$appDir"
     cp -r . "$appDir/"
 
-    makeWrapper "$appDir/SparkyFitnessServer/node_modules/.bin/tsx" "$out/bin/sparkyfitness-server" \
+    makeWrapper "${common.nodejs}/bin/node" "$out/bin/sparkyfitness-server" \
       --chdir "$appDir/SparkyFitnessServer" \
-      --add-flags "index.ts" \
+      --add-flags "--import tsx index.ts" \
       --prefix PATH : ${
         lib.makeBinPath [
           common.nodejs
