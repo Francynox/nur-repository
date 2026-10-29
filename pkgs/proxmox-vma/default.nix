@@ -16,12 +16,12 @@
 let
   proxmoxPatchSrc = fetchFromGitHub rec {
     pname = "pve-qemu-src";
-    version = "eca96893ba6db97a58924d75546673b94ab84411";
+    version = "ae7733cb6e3abe422144906f92a3b00387402672";
 
     owner = "proxmox";
     repo = "pve-qemu";
     rev = version;
-    hash = "sha256-dr2oYkTPAc6hYrnRi0REKS/u6zWx76bAnzOpy+p3bRI=";
+    hash = "sha256-p9EIntGdZ7tkUA3mHN2mS8iYRDDGTCzbxlv8OdwN9V0=";
   };
 
   # Disable unneeded features to reduce build time
@@ -45,11 +45,11 @@ in
 minimalQemu.overrideAttrs (
   finalAttrs: prevAttrs: {
     pname = "proxmox-vma";
-    version = "11.1.1";
+    version = "11.1.3";
 
     src = fetchurl {
       url = "https://download.qemu.org/qemu-${finalAttrs.version}.tar.xz";
-      hash = "sha256-B5/7/4pxEbvIkCIQfLq/O7/WFNX8nXzGdZkRlqyhJII=";
+      hash = "sha256-WoKJx5QNx304c8gabCm6Ov4URvydNud/oWWM2+y4SyI=";
     };
 
     outputs = [ "out" ];
