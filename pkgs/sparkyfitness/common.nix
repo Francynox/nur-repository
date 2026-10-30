@@ -11,13 +11,13 @@
   nix,
 }:
 let
-  version = "1.10.0";
+  version = "1.11.0";
 
   src = fetchFromGitHub {
     owner = "CodeWithCJ";
     repo = "SparkyFitness";
     rev = "v${version}";
-    hash = "sha256-B1Z6ROuYjn7otFp66hUq//SYq2G6GD4q+AL7yPOqRcQ=";
+    hash = "sha256-gk+ngSrEBwSBcqMe1itITAiBkAIxbv8o2VFOXF5cgx4=";
   };
 
   nodejs = nodejs_24;
