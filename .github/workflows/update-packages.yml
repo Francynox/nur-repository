@@ -65,7 +65,7 @@ jobs:
           PACKAGE: ${{ matrix.package }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          nix run nixpkgs#nix-update -- --flake -u "$PACKAGE"
+          nix run .#nix-update -- --flake -u "$PACKAGE"
           rm -f update-git-commits.txt
       - name: Create Pull Request if changes detected
         uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8

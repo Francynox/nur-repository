@@ -51,6 +51,15 @@
           inherit system;
           overlays = [
             (import ./overlays/francynox-namespace.nix)
+            # Workaround for Mic92/nix-update#687 with Nix 2.35 lazy flake fetching
+            # until Mic92/nix-update#692 lands in nixpkgs.
+            (_: prev: {
+              nix-update =
+                if prev.nix-update.version == "1.16.0" && prev.nixVersions ? nix_2_34 then
+                  prev.nix-update.override { nix = prev.nixVersions.nix_2_34; }
+                else
+                  prev.nix-update;
+            })
           ];
           config.allowUnfree = true;
         };
@@ -85,6 +94,10 @@
 
         legacyPackages = nur;
         packages = lib.filterAttrs (_: isSupported) nur;
+        apps.nix-update = {
+          type = "app";
+          program = lib.getExe pkgs.nix-update;
+        };
         checks = mkCi isSupported;
         ciJobs = mkCi isCacheable;
 
