@@ -18,11 +18,11 @@
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "kea";
-  version = "3.3.3";
+  version = "3.3.4";
 
   src = fetchurl {
     url = "https://downloads.isc.org/isc/${finalAttrs.pname}/${finalAttrs.version}/${finalAttrs.pname}-${finalAttrs.version}.tar.xz";
-    hash = "sha256-OG0Gh1lGFaSVh7UgPYxzr/IOSx4qrMFAn32+ymOUeBM=";
+    hash = "sha256-u6XsNZttgLW8MPk328ibpVxpLkRlFBVkg1wInUIIBBQ=";
   };
 
   patches = [
